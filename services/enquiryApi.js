@@ -510,3 +510,4 @@ export async function updateEnquiryStatus(enquiryId, newStatus) {
     isMock: apiRes.isMock,
   };
 }
+

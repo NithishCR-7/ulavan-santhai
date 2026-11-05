@@ -10,6 +10,7 @@ import FormSelect from "@/components/onboarding/FormSelect";
 import DocumentUploader from "@/components/onboarding/DocumentUploader";
 import { submitApplication } from "@/services/onboardingApi";
 import { useSessionUser } from "@/services/sessionAuth";
+import { checkRolePaymentStatus } from "@/services/paymentApi";
 
 export const BUYER_TYPES = [
   "Individual",
@@ -59,7 +60,14 @@ function OnboardingContent() {
 
   // Active role from query: "buyer" or "seller"
   const roleParam = (searchParams.get("role") || "buyer").toLowerCase();
+  const isApprovedParam = searchParams.get("approved") === "true";
   const [role, setRole] = useState(roleParam === "seller" ? "seller" : "buyer");
+
+  // Payment review status check (Stage 4 & 5 verification)
+  const [paymentStatus] = useState(() => {
+    if (isApprovedParam) return { approved: true, status: "APPROVED" };
+    return checkRolePaymentStatus(roleParam);
+  });
 
   // Stepper: 1. Profile Details -> 2. Document Upload -> 3. Review & Submit
   // (NOTE: Step 1 Account Information was removed as user already registered)
@@ -480,6 +488,47 @@ function OnboardingContent() {
             if (s < currentStep) setCurrentStep(s);
           }}
         />
+
+        {/* Stage 4 & 5 Status Notice */}
+        {!paymentStatus.approved && !isApprovedParam ? (
+          <div className="mb-6 p-5 rounded-3xl bg-amber-50 border border-amber-300 shadow-2xs space-y-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-amber-950">
+                Stage 4 &amp; 5 Required: Role Membership Payment (₹365)
+              </h3>
+            </div>
+            <p className="text-xs text-amber-900 leading-relaxed">
+              As required by UlavanSanthai policy, membership payment must be initiated immediately after role selection before proceeding with detailed business credentials.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Link
+                href={`/onboarding/payment?role=${role}`}
+                className="px-4 py-2 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors"
+              >
+                Complete {role === "seller" ? "Seller" : "Buyer"} Payment (₹365) &rarr;
+              </Link>
+              <Link
+                href={`/onboarding/status?role=${role}`}
+                className="px-4 py-2 rounded-xl border border-amber-300 bg-white hover:bg-amber-100/50 text-amber-900 text-xs font-bold transition-colors"
+              >
+                Check Payment Review Status &rarr;
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+              <span>
+                <strong>Stage 5 Cleared:</strong> ₹365 {role === "seller" ? "Seller" : "Buyer"} Membership verified. Proceed with Stage 5B detailed onboarding.
+              </span>
+            </div>
+            <span className="text-[10px] font-black text-emerald-800 bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+              ✓ Stage 5 Cleared
+            </span>
+          </div>
+        )}
 
         {/* Error notification */}
         {formError && (

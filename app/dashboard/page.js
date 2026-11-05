@@ -320,13 +320,12 @@ function DashboardContent() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsPayModalOpen(true)}
-                  className="px-6 py-3 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap self-start md:self-auto"
+                <Link
+                  href="/onboarding/payment?role=seller&mode=add_second_role"
+                  className="px-6 py-3 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap self-start md:self-auto inline-flex items-center gap-1.5"
                 >
-                  Pay ₹365 &amp; Make Profile Live →
-                </button>
+                  <span>Pay ₹365 &amp; Make Profile Live &rarr;</span>
+                </Link>
               </div>
             ) : (
               <div className="p-4 sm:p-5 rounded-3xl bg-emerald-50 border border-emerald-300 shadow-xs flex items-center justify-between flex-wrap gap-3">

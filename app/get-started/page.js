@@ -11,7 +11,27 @@ export default function GetStartedPage() {
   const userName = sessionUser?.name && sessionUser.name !== "Farmer Ramesh Kumar" ? sessionUser.name : "";
 
   const handleSelectRole = (role) => {
-    router.push(`/onboarding?role=${role}`);
+    if (typeof window !== "undefined") {
+      try {
+        const stored =
+          sessionStorage.getItem("ulavan_user") ||
+          localStorage.getItem("ulavan_registered_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const updated = {
+            ...parsed,
+            role: role.charAt(0).toUpperCase() + role.slice(1),
+            selectedRole: role.toUpperCase(),
+          };
+          sessionStorage.setItem("ulavan_user", JSON.stringify(updated));
+          localStorage.setItem("ulavan_registered_user", JSON.stringify(updated));
+        }
+      } catch {
+        // Safe fallback
+      }
+    }
+    // STAGE 4: Route immediately to payment checkout before detailed onboarding
+    router.push(`/onboarding/payment?role=${role}`);
   };
 
   const cards = [

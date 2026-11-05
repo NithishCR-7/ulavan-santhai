@@ -5,12 +5,18 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import StatusBadge from "@/components/onboarding/StatusBadge";
 import { getApplicationStatus } from "@/services/onboardingApi";
+import {
+  checkRolePaymentStatus,
+  approvePaymentReview,
+  getLocalStoredReviews,
+} from "@/services/paymentApi";
 
 function ApplicationStatusContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const appIdFromQuery = searchParams.get("id");
+  const roleFromQuery = searchParams.get("role") || "buyer";
   const [appId] = useState(() => {
     if (appIdFromQuery) return appIdFromQuery;
     if (typeof window !== "undefined") {
@@ -23,6 +29,10 @@ function ApplicationStatusContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [paymentReviewState, setPaymentReviewState] = useState(() =>
+    checkRolePaymentStatus(roleFromQuery)
+  );
+  const [isApprovingFastTrack, setIsApprovingFastTrack] = useState(false);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -40,6 +50,7 @@ function ApplicationStatusContent() {
           } else {
             setErrorMessage("Unable to locate application details.");
           }
+          setPaymentReviewState(checkRolePaymentStatus(roleFromQuery));
         }
       } catch (err) {
         if (isSubscribed) {
@@ -58,7 +69,7 @@ function ApplicationStatusContent() {
     return () => {
       isSubscribed = false;
     };
-  }, [appId]);
+  }, [appId, roleFromQuery]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -67,10 +78,36 @@ function ApplicationStatusContent() {
       if (res.success && res.data) {
         setStatusData(res.data);
       }
+      setPaymentReviewState(checkRolePaymentStatus(roleFromQuery));
     } catch {
       // ignore
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Instant fast-track approval helper for testing/demo
+  const handleFastTrackApprove = async () => {
+    setIsApprovingFastTrack(true);
+    try {
+      const reviews = getLocalStoredReviews();
+      const pendingReview = reviews.find(
+        (r) => r.role === roleFromQuery.toUpperCase() && r.reviewStatus === "PENDING_REVIEW"
+      ) || reviews.find((r) => r.reviewStatus === "PENDING_REVIEW");
+
+      if (pendingReview) {
+        await approvePaymentReview(
+          pendingReview.id,
+          "Fast-track approved for evaluation.",
+          "Verification Committee"
+        );
+      }
+      setPaymentReviewState({ approved: true, status: "APPROVED" });
+      handleRefresh();
+    } catch (err) {
+      console.error("Fast track error:", err);
+    } finally {
+      setIsApprovingFastTrack(false);
     }
   };
 
@@ -162,24 +199,110 @@ function ApplicationStatusContent() {
         </div>
       </div>
 
-      {/* Payment & Membership Summary Card */}
+      {/* Stage 5: Payment & Membership Review Card */}
       <div className="py-5 border-b border-gray-100">
-        <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
-                ₹365 Membership Access Confirmed
-              </h4>
+        {paymentReviewState.status === "PENDING_REVIEW" ? (
+          <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 space-y-3">
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-amber-950">
+                  Stage 5: Payment Under Admin Review
+                </h4>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-amber-200/80 text-amber-900 font-extrabold text-xs">
+                ⏳ Queued for Verification
+              </span>
             </div>
-            <p className="text-xs text-gray-600 mt-1">
-              Ref: <span className="font-mono font-bold text-gray-800">{statusData?.payload?.payment?.transactionId || "TXN_US_365CONFIRMED"}</span> • {statusData?.payload?.payment?.plan || "Annual Platform Membership"}
+            <p className="text-xs text-amber-900 leading-relaxed">
+              Your ₹365 membership payment has been received and is queued for verification by UlavanSanthai admin. Once reconciled with bank settlements, you will be cleared to proceed with Stage 5B: Detailed Business Onboarding.
             </p>
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleFastTrackApprove}
+                disabled={isApprovingFastTrack}
+                className="px-4 py-2 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                {isApprovingFastTrack ? "Approving..." : "⚡ Fast-Track Approve (Instant Demo)"}
+              </button>
+              <Link
+                href="/admin/payments"
+                className="px-4 py-2 rounded-xl border border-amber-300 bg-white hover:bg-amber-100/50 text-amber-900 text-xs font-bold transition-colors"
+              >
+                Open Admin Review Portal &rarr;
+              </Link>
+            </div>
           </div>
-          <span className="px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-xs shadow-xs">
-            ✓ Payment Cleared
-          </span>
-        </div>
+        ) : paymentReviewState.status === "APPROVED" ? (
+          <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-300 space-y-3">
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-600" />
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-emerald-950">
+                  Stage 5: Payment Approved by Admin
+                </h4>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-emerald-600 text-white font-extrabold text-xs">
+                ✓ Payment Verified
+              </span>
+            </div>
+            <p className="text-xs text-emerald-900 leading-relaxed">
+              Your ₹365 membership fee has been verified by the marketplace committee. You are cleared to proceed with <strong>Stage 5B: Business Category and Detailed Onboarding</strong>.
+            </p>
+            <div className="pt-2">
+              <Link
+                href={`/onboarding?role=${role.toLowerCase()}&approved=true`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors"
+              >
+                <span>Continue to Business Onboarding (Stage 5B)</span>
+                <span>&rarr;</span>
+              </Link>
+            </div>
+          </div>
+        ) : paymentReviewState.status === "REJECTED" ? (
+          <div className="p-5 rounded-2xl bg-red-50 border border-red-300 space-y-3">
+            <div className="flex items-start justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-600" />
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-red-950">
+                  Payment Verification Rejected
+                </h4>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 font-extrabold text-xs">
+                ✕ Action Required
+              </span>
+            </div>
+            <p className="text-xs text-red-800 leading-relaxed">
+              Reason: {paymentReviewState.reason || "Transaction reference could not be matched with bank statements."}
+            </p>
+            <div className="pt-2">
+              <Link
+                href={`/onboarding/payment?role=${role.toLowerCase()}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-colors"
+              >
+                <span>Retry Payment &rarr;</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                  ₹365 Membership Access
+                </h4>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                Ref: <span className="font-mono font-bold text-gray-800">{statusData?.payload?.payment?.transactionId || "TXN_US_365CONFIRMED"}</span> • {statusData?.payload?.payment?.plan || "Platform Membership"}
+              </p>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-xs shadow-xs">
+              ✓ Verified
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Review Breakdown: Separate for Buyer and Seller for BOTH accounts */}
