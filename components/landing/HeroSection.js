@@ -1,21 +1,39 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function HeroSection() {
-  const [isLiveVideo, setIsLiveVideo] = useState(false);
-  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const videoRef = useRef(null);
 
-  // User uploaded authentic aerial photograph of lush green paddy fields and river at golden hour (Thanjavur, Tamil Nadu)
-  const heroImageSrc = "/images/hero-aerial-fields.jpg";
+  // Background video: Rice stalks swaying in breeze
+  const videoSrc = "/Rice_stalks_swaying_in_breeze_dda964d8_1080p.mp4";
 
-  // Genuine high-quality agricultural footage (Wikimedia Commons / USDA NRCS)
-  const videoWebm =
-    "https://upload.wikimedia.org/wikipedia/commons/4/46/20200724-NRCS-LSC-0030-Rice_Harvesting.webm";
-  const videoWebmAlt =
-    "https://upload.wikimedia.org/wikipedia/commons/f/f6/Tea_Garden_view_near_Jalpaiguri%2C_North_West_Bengal.webm";
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(() => {
+        setIsPlaying(false);
+      });
+    }
+  }, []);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch(() => {});
+      }
+    }
+  };
 
   return (
     <section
@@ -24,43 +42,22 @@ export default function HeroSection() {
     >
       {/* Background Visual Layer */}
       <div className="absolute inset-0 w-full h-full">
-        {/* High-Resolution Aerial Photograph (User Selected) */}
-        <div
-          className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${
-            isLiveVideo && videoLoaded ? "opacity-0" : "opacity-100"
-          }`}
+        {/* Full-bleed Rice stalks swaying video as background */}
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          className="absolute inset-0 w-full h-full object-cover object-center"
         >
-          <Image
-            src={heroImageSrc}
-            alt="Aerial view of lush green agricultural paddy fields and river at golden hour"
-            fill
-            priority
-            quality={92}
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-        </div>
-
-        {/* Cinematic Agricultural Video Background (Toggleable / Optional) */}
-        {isLiveVideo && (
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            onLoadedData={() => setVideoLoaded(true)}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-              videoLoaded ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <source src={videoWebm} type="video/webm" />
-            <source src={videoWebmAlt} type="video/webm" />
-          </video>
-        )}
+          <source src={videoSrc} type="video/mp4" />
+        </video>
 
         {/* Directional Gradient Scrim:
             - Left side: Soft forest green gradient providing perfect contrast for white typography
-            - Right side: Completely clear and transparent, keeping the vibrant green landscape and daylight visible */}
+            - Right side: Clear gradient keeping the swaying rice stalks visible and vibrant */}
         <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#103A29]/95 via-[#103A29]/65 via-45% to-transparent pointer-events-none" />
 
         {/* Mobile vertical gradient (balanced for smaller portrait screens) */}
@@ -122,44 +119,29 @@ export default function HeroSection() {
         </svg>
       </a>
 
-      {/* Interactive View Switcher: Aerial Photograph / Cinematic Reel */}
-      <div className="absolute bottom-6 right-6 sm:right-8 z-20 flex items-center gap-1.5 bg-[#103A29]/80 backdrop-blur-md border border-white/20 p-1 rounded-full text-xs font-semibold text-white/90 shadow-md">
-        <button
-          type="button"
-          onClick={() => setIsLiveVideo(false)}
-          className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-            !isLiveVideo
-              ? "bg-white text-[#174B35] shadow-xs"
-              : "text-white/80 hover:text-white"
-          }`}
-          aria-label="View Aerial Fields Photography"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <span>Aerial View</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsLiveVideo(true)}
-          className={`px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5 ${
-            isLiveVideo
-              ? "bg-white text-[#174B35] shadow-xs"
-              : "text-white/80 hover:text-white"
-          }`}
-          aria-label="Play Cinematic Video Reel"
-        >
-          <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <span>Cinematic Reel</span>
-        </button>
-      </div>
+      {/* Video Motion Control Toggle */}
+      <button
+        type="button"
+        onClick={togglePlay}
+        aria-label={isPlaying ? "Pause background video" : "Play background video"}
+        className="absolute bottom-6 right-6 sm:right-8 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#103A29]/80 hover:bg-[#103A29] backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-md transition-all duration-200 cursor-pointer"
+      >
+        {isPlaying ? (
+          <>
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+            <span>Pause Motion</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <span>Play Motion</span>
+          </>
+        )}
+      </button>
     </section>
   );
 }
