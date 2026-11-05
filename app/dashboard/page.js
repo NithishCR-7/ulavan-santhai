@@ -450,7 +450,15 @@ function DashboardContent() {
                   <h3 className="text-base sm:text-lg font-extrabold text-[#174B35]">Direct Farm Produce Marketplace</h3>
                   <p className="text-xs text-gray-500 mt-0.5">Contact certified producers directly for wholesale and retail procurement.</p>
                 </div>
-                <span className="text-xs font-semibold text-[#729B59]">5 Verified Lots Ready for Dispatch</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-[#729B59]">Verified Lots Ready</span>
+                  <Link
+                    href="/marketplace"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors"
+                  >
+                    <span>Explore Products &rarr;</span>
+                  </Link>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
