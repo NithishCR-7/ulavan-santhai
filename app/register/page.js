@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,52 +23,11 @@ export default function BasicRegistrationPage() {
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // OTP Verification state
-  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [otpError, setOtpError] = useState("");
-  const [generatedOtp, setGeneratedOtp] = useState("");
-  const [isOtpVerified, setIsOtpVerified] = useState(false);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const otpInputRefs = useRef([]);
-
   // Success Modal State
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
-  // OTP Handlers
-  const handleSendOtp = () => {
-    if (!formData.mobile || formData.mobile.replace(/\D/g, "").length < 10) {
-      setFormError("Please enter a valid 10-digit mobile number before requesting OTP.");
-      return;
-    }
-    setFormError("");
-    setIsSendingOtp(true);
-    const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(mockCode);
-    setTimeout(() => {
-      setIsSendingOtp(false);
-      setIsOtpModalOpen(true);
-    }, 600);
-  };
-
-  const handleVerifyOtp = () => {
-    setIsVerifyingOtp(true);
-    setOtpError("");
-    setTimeout(() => {
-      const entered = otp.join("");
-      if (entered === generatedOtp || entered === "123456" || entered.length === 6) {
-        setIsOtpVerified(true);
-        setIsOtpModalOpen(false);
-        setIsVerifyingOtp(false);
-      } else {
-        setOtpError("Invalid 6-digit OTP code. Please enter the correct code.");
-        setIsVerifyingOtp(false);
-      }
-    }, 500);
-  };
-
-  const handleRegister = async (e) => {
+  // Submit all registration info under one single route to the backend
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
 
@@ -82,7 +41,8 @@ export default function BasicRegistrationPage() {
       return;
     }
 
-    if (!formData.mobile || formData.mobile.replace(/\D/g, "").length < 10) {
+    const cleanMobile = formData.mobile.replace(/\D/g, "");
+    if (!formData.mobile || cleanMobile.length < 10) {
       setFormError("Please enter a valid 10-digit mobile number.");
       return;
     }
@@ -109,37 +69,45 @@ export default function BasicRegistrationPage() {
         name: formData.fullName.trim(),
         username: formData.fullName.trim(),
         email: formData.email.trim().toLowerCase(),
-        mobile: formData.mobile.trim(),
+        mobile: cleanMobile,
         password: formData.password,
         role: "unassigned",
         status: "active",
+        onboarded: false,
         registeredAt: new Date().toISOString(),
       };
 
-      // Store in browser session for immediate authentication handover
+      // Store in browser session for seamless login handover
       if (typeof window !== "undefined") {
         sessionStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
         localStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
       }
 
-      // Also dispatch to API if backend is online
+      // Backend receives name, email, mobile, password under ONE SINGLE route
       try {
         await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newAccount),
+          body: JSON.stringify({
+            name: newAccount.name,
+            username: newAccount.username,
+            email: newAccount.email,
+            mobile: newAccount.mobile,
+            password: newAccount.password,
+          }),
         });
       } catch {
-        // Handled via local session contract
+        // Safe offline / local fallback
       }
 
+      // Show success modal and transition to Login page
       setIsSuccessModalOpen(true);
 
       setTimeout(() => {
         router.push(`/login?registered=true&email=${encodeURIComponent(formData.email.trim())}`);
-      }, 1500);
+      }, 1400);
     } catch {
-      setFormError("Registration failed. Please check your information and retry.");
+      setFormError("Registration failed. Please check your details and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -186,28 +154,27 @@ export default function BasicRegistrationPage() {
                   priority
                 />
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Ulavan Santhai</h2>
-              <p className="text-xs uppercase font-extrabold tracking-wider text-emerald-200 mt-1">
+              <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-xs">Ulavan Santhai</h2>
+              <p className="text-[11px] uppercase tracking-widest text-[#a7f3d0] font-bold mt-0.5">
                 Agricultural Marketplace
               </p>
             </div>
 
-            {/* Quote / Mission */}
-            <div className="relative z-10 py-6 border-y border-white/15 my-auto">
-              <p className="text-sm font-semibold text-emerald-50 leading-relaxed italic">
+            {/* Middle Value Proposition Quote */}
+            <div className="relative z-10 my-8">
+              <p className="text-sm font-medium text-emerald-50/90 leading-relaxed italic">
                 &ldquo;Direct agricultural trading connecting producers, farmers, traders, and commercial buyers with 0% middleman commission.&rdquo;
               </p>
-              <div className="mt-4 flex items-center gap-2 text-xs text-emerald-200 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-emerald-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Quick &amp; Simple Registration</span>
               </div>
             </div>
 
-            {/* Trust points */}
-            <div className="relative z-10 text-[11px] text-emerald-100/90 space-y-1.5">
-              <div>✓ Create account in 1 minute</div>
-              <div>✓ Seamless role setup after login</div>
-              <div>✓ Secure bank-grade data encryption</div>
+            {/* Footer Trust Badge */}
+            <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-white/70 font-medium">
+              <span>&#10003; Create account in 1 minute</span>
+              <span>&#10003; 100% Free Access</span>
             </div>
           </div>
 
@@ -254,7 +221,7 @@ export default function BasicRegistrationPage() {
             )}
 
             {/* Basic Registration Form */}
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
               {/* Full Name / Username */}
               <div>
                 <FormInput
@@ -283,38 +250,24 @@ export default function BasicRegistrationPage() {
                 />
               </div>
 
-              {/* Phone / Mobile Number */}
+              {/* Phone / Mobile Number (Clean input without any Verify OTP button) */}
               <div>
                 <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5">
                   Mobile Number (10 Digits) <span className="text-red-500">*</span>
                 </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-gray-400">
-                      +91
-                    </span>
-                    <input
-                      type="tel"
-                      maxLength={10}
-                      value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, "") })}
-                      placeholder="9876543210"
-                      className="w-full pl-12 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#174B35] text-sm text-gray-900"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={isSendingOtp || isOtpVerified}
-                    className={`px-3.5 py-2.5 sm:py-3 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                      isOtpVerified
-                        ? "bg-[#E8F0E3] text-[#174B35] border border-[#729B59]/40 cursor-default"
-                        : "bg-[#174B35] text-white hover:bg-[#103A29] cursor-pointer shadow-xs"
-                    }`}
-                  >
-                    {isOtpVerified ? "✓ Verified" : isSendingOtp ? "Sending..." : "Verify OTP"}
-                  </button>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-gray-400 pointer-events-none">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={formData.mobile}
+                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, "") })}
+                    placeholder="9876543210"
+                    className="w-full pl-12 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#174B35] text-sm text-gray-900"
+                    required
+                  />
                 </div>
               </div>
 
@@ -367,16 +320,17 @@ export default function BasicRegistrationPage() {
                 </div>
               </div>
 
-              {/* Terms Agreement Checkbox */}
-              <div className="pt-2">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.agreeTerms}
-                    onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
-                    className="h-4 w-4 text-[#174B35] rounded border-gray-300 mt-0.5 accent-[#174B35]"
-                    required
-                  />
+              {/* Terms Checkbox */}
+              <div className="flex items-start pt-1">
+                <input
+                  id="agreeTerms"
+                  name="agreeTerms"
+                  type="checkbox"
+                  checked={formData.agreeTerms}
+                  onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
+                  className="h-4 w-4 text-[#174B35] focus:ring-[#174B35] border-gray-300 rounded cursor-pointer accent-[#174B35] mt-0.5"
+                />
+                <label htmlFor="agreeTerms" className="ml-2 block cursor-pointer">
                   <span className="text-xs text-gray-600 leading-relaxed">
                     I agree to the <span className="font-bold text-[#174B35]">Terms of Service</span> and Privacy Policy of Ulavan Santhai.
                   </span>
@@ -423,62 +377,6 @@ export default function BasicRegistrationPage() {
           </div>
         </div>
       </div>
-
-      {/* OTP Modal */}
-      {isOtpModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100">
-            <div className="w-12 h-12 rounded-2xl bg-[#E8F0E3] text-[#174B35] flex items-center justify-center mx-auto mb-3">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-extrabold text-gray-900">Verify Mobile Number</h3>
-            <p className="text-xs text-gray-500 mt-1 mb-2">
-              Enter the 6-digit code sent to +91 {formData.mobile}
-            </p>
-            <div className="p-2 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-mono mb-4">
-              Demo Code: <strong>{generatedOtp || "123456"}</strong>
-            </div>
-
-            <div className="flex justify-center gap-2 mb-4">
-              {otp.map((digit, idx) => (
-                <input
-                  key={idx}
-                  ref={(el) => (otpInputRefs.current[idx] = el)}
-                  type="text"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
-                    const newOtp = [...otp];
-                    newOtp[idx] = val;
-                    setOtp(newOtp);
-                    if (val && idx < 5) otpInputRefs.current[idx + 1]?.focus();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Backspace" && !otp[idx] && idx > 0) {
-                      otpInputRefs.current[idx - 1]?.focus();
-                    }
-                  }}
-                  className="w-10 h-12 text-center text-lg font-bold border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#174B35] focus:outline-none"
-                />
-              ))}
-            </div>
-
-            {otpError && <p className="text-xs text-red-600 font-semibold mb-3">{otpError}</p>}
-
-            <button
-              type="button"
-              onClick={handleVerifyOtp}
-              disabled={isVerifyingOtp}
-              className="w-full py-3 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-sm shadow-xs cursor-pointer"
-            >
-              {isVerifyingOtp ? "Verifying..." : "Confirm & Verify Mobile"}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Success Modal */}
       {isSuccessModalOpen && (
