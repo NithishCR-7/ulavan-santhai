@@ -11,6 +11,7 @@ import {
   topUpBuyerQuota,
   getBuyerAccessEntitlement,
 } from "@/services/sellerAccessApi";
+import { getLocalStoredProducts } from "@/services/productApi";
 
 export default function ProductDetailsClient({ productId }) {
   // Mock marketplace catalog matching verified Tamil Nadu producers
@@ -192,7 +193,27 @@ export default function ProductDetailsClient({ productId }) {
     },
   ];
 
-  const product = catalogProducts.find((p) => String(p.id) === String(productId));
+  // Resolve product from local seller products and multi-seller catalog
+  const [product] = useState(() => {
+    const locallyStored = getLocalStoredProducts();
+    const foundLocal = locallyStored.find((p) => String(p.id) === String(productId));
+    if (foundLocal) {
+      return {
+        ...foundLocal,
+        images:
+          foundLocal.images && foundLocal.images.length > 0
+            ? foundLocal.images.map((i) => (typeof i === "string" ? i : i.url))
+            : [foundLocal.thumbnail || "/images/about-farmer-harvest.jpg"],
+        originVillage: foundLocal.originVillage || foundLocal.village || "",
+        originDistrict: foundLocal.originDistrict || foundLocal.district || "Tamil Nadu",
+        originState: foundLocal.originState || "Tamil Nadu",
+        sellerId: foundLocal.sellerId || "APP_US_982412",
+        sellerName: foundLocal.sellerName || "Kongu Natural Organic Farms",
+        sellerType: foundLocal.sellerType || "Farmer",
+      };
+    }
+    return catalogProducts.find((p) => String(p.id) === String(productId));
+  });
 
   // Active Image Gallery Selection
   const [activeImage, setActiveImage] = useState(

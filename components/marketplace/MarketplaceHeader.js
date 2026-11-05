@@ -53,6 +53,9 @@ export default function MarketplaceHeader() {
           <Link href="/seller/dashboard" className="hover:text-[#174B35] transition-colors">
             Seller Workspace
           </Link>
+          <Link href="/admin/payments" className="text-gray-400 hover:text-red-700 transition-colors text-xs font-semibold">
+            Admin
+          </Link>
         </nav>
 
         {/* Right User Actions */}

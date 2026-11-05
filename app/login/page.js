@@ -130,8 +130,8 @@ function LoginContent() {
       const isOnboarded = userData?.onboarded === true;
       let targetRoute = "/get-started";
 
-      if (isOnboarded && (role === "buyer" || role === "seller")) {
-        targetRoute = `/dashboard?role=${role}`;
+      if (isOnboarded) {
+        targetRoute = role === "seller" ? "/seller/dashboard" : "/dashboard";
       } else {
         targetRoute = "/get-started";
       }

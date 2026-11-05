@@ -387,7 +387,11 @@ function OnboardingContent() {
       }
 
       setTimeout(() => {
-        router.push(`/dashboard?role=${role}&id=${applicationId}`);
+        if (role === "seller") {
+          router.push(`/seller/dashboard?id=${applicationId}`);
+        } else {
+          router.push(`/dashboard?role=buyer&id=${applicationId}`);
+        }
       }, 1000);
     } catch {
       setFormError("Submission failed. Please check your network and retry.");
