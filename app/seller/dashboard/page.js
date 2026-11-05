@@ -6,6 +6,7 @@ import Image from "next/image";
 import SellerHeader from "@/components/seller/SellerHeader";
 import SellerSidebar from "@/components/seller/SellerSidebar";
 import SellerMetricCard from "@/components/seller/SellerMetricCard";
+import SellerBusinessCard from "@/components/seller/SellerBusinessCard";
 import { getSellerDashboardData } from "@/services/sellerApi";
 import { useSessionUser } from "@/services/sessionAuth";
 
@@ -150,7 +151,7 @@ export default function SellerDashboardPage() {
             <div className="absolute right-0 bottom-0 w-64 h-64 bg-white/5 rounded-full pointer-events-none -mr-16 -mb-16 blur-2xl" />
 
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
+              <div className="max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-200 uppercase tracking-wider">
                     {sellerInfo.sellerType || "Farmer"}
@@ -162,23 +163,26 @@ export default function SellerDashboardPage() {
                 </div>
 
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                  Welcome, {sellerInfo.name}
+                  Welcome back, {sellerInfo.name}
                 </h1>
-                <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
+                <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 leading-relaxed">
+                  From here you can manage your listed produce, respond to direct purchase inquiries from buyers, and add new harvest batches.
+                </p>
+                <p className="text-[11px] text-emerald-200/80 mt-1 font-medium">
                   {sellerInfo.farmName} &bull; {sellerInfo.location}, {sellerInfo.district} District
                 </p>
               </div>
 
-              {/* Quick Action Button: Add New Product */}
-              <div className="flex items-center gap-3 shrink-0">
+              {/* Primary Action Button: Add Product */}
+              <div className="shrink-0">
                 <Link
                   href="/seller/products/add"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-emerald-50 text-[#174B35] font-extrabold text-sm shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white hover:bg-emerald-50 text-[#174B35] font-black text-sm sm:text-base shadow-lg transition-all hover:scale-[1.03] active:scale-[0.98] border-2 border-white"
                 >
-                  <svg className="w-4 h-4 text-[#174B35]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Add New Product</span>
+                  <span className="w-6 h-6 rounded-lg bg-[#174B35] text-white flex items-center justify-center font-bold text-base leading-none">
+                    +
+                  </span>
+                  <span>Add Product</span>
                 </Link>
               </div>
             </div>
@@ -186,11 +190,11 @@ export default function SellerDashboardPage() {
 
           {/* Key Metric Stat Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* 1. Total Products */}
+            {/* 1. My Products */}
             <SellerMetricCard
-              title="Total Products"
+              title="My Products"
               value={metrics.totalProducts}
-              subtitle="Listed in catalog"
+              subtitle="Total listed crops"
               badgeText="All Items"
               badgeType="neutral"
               icon={
@@ -204,8 +208,8 @@ export default function SellerDashboardPage() {
             <SellerMetricCard
               title="Active Products"
               value={metrics.activeProducts}
-              subtitle="Visible to buyers"
-              badgeText="Live on Market"
+              subtitle="Available to buyers"
+              badgeText="Live"
               badgeType="success"
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,12 +218,12 @@ export default function SellerDashboardPage() {
               }
             />
 
-            {/* 3. Pending Approval */}
+            {/* 3. Waiting for Approval */}
             <SellerMetricCard
-              title="Pending Approval"
+              title="Waiting for Approval"
               value={metrics.pendingApproval}
-              subtitle="In quality review"
-              badgeText="Under Review"
+              subtitle="Under quality check"
+              badgeText="Reviewing"
               badgeType="warning"
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -228,12 +232,12 @@ export default function SellerDashboardPage() {
               }
             />
 
-            {/* 4. Received Enquiries */}
+            {/* 4. Buyer Enquiries */}
             <SellerMetricCard
-              title="Received Enquiries"
+              title="Buyer Enquiries"
               value={metrics.receivedEnquiries}
-              subtitle="Direct buyer leads"
-              badgeText="2 Unread"
+              subtitle="Direct purchase leads"
+              badgeText="Active Leads"
               badgeType="info"
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,227 +247,200 @@ export default function SellerDashboardPage() {
             />
           </div>
 
-          {/* Main Dashboard Split Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column (7 cols): Recently Added Products */}
-            <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div>
-                  <h2 className="text-base sm:text-lg font-black text-[#174B35] tracking-tight">
-                    Recently Added Products
-                  </h2>
-                  <p className="text-xs text-gray-500">
-                    Latest agricultural produce listed for commercial trade
-                  </p>
+          {/* Registered Seller Business Profile (Reused from Onboarding /onboarding) */}
+          <SellerBusinessCard sellerInfo={sellerInfo} showEditButton={true} />
+
+          {/* Main Dashboard Clean 2-Column Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Column 1: Recently Added Products */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black text-[#174B35] tracking-tight">
+                      Recently Added Products
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Your agricultural crops listed for commercial trading
+                    </p>
+                  </div>
+                  <Link
+                    href="/seller/products"
+                    className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline"
+                  >
+                    View All ({recentProducts.length}) &rarr;
+                  </Link>
                 </div>
-                <Link
-                  href="/seller/products"
-                  className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline"
-                >
-                  View All ({recentProducts.length}) &rarr;
-                </Link>
+
+                {/* Products List */}
+                <div className="divide-y divide-gray-100 mt-2">
+                  {isLoading ? (
+                    <div className="py-12 text-center text-xs text-gray-400">Loading products...</div>
+                  ) : recentProducts.length === 0 ? (
+                    <div className="py-12 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#F5F5EB] text-[#174B35] flex items-center justify-center mx-auto text-xl">
+                        🌾
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium">
+                        No products added yet. Click &ldquo;Add Product&rdquo; to list your first crop.
+                      </p>
+                    </div>
+                  ) : (
+                    recentProducts.slice(0, 4).map((product) => (
+                      <div
+                        key={product.id}
+                        className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/70 rounded-xl px-2 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 relative shrink-0 border border-gray-200">
+                            <Image
+                              src={product.thumbnail}
+                              alt={product.title}
+                              fill
+                              sizes="48px"
+                              className="object-cover"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                              {product.title}
+                            </h4>
+                            <p className="text-[11px] text-gray-500 truncate">
+                              {product.category} &bull; {product.variety}
+                            </p>
+                            <span className="text-[10px] text-gray-400">
+                              Added {product.createdAt}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-xs sm:text-sm font-black text-[#174B35]">
+                            ₹{product.pricePerUnit} / {product.unit}
+                          </div>
+                          <div className="text-[11px] text-gray-500 font-medium">
+                            Stock: {product.availableStock.toLocaleString()} {product.unit}
+                          </div>
+                          <div className="mt-1">
+                            {product.status === "ACTIVE" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                Waiting Approval
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
 
-              {/* Products Table / List */}
-              <div className="divide-y divide-gray-100 overflow-x-auto">
-                {isLoading ? (
-                  <div className="py-8 text-center text-xs text-gray-400">Loading products...</div>
-                ) : recentProducts.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-gray-400">No products added yet.</div>
-                ) : (
-                  recentProducts.slice(0, 4).map((product) => (
-                    <div
-                      key={product.id}
-                      className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/70 rounded-xl px-2 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 relative shrink-0 border border-gray-200">
-                          <Image
-                            src={product.thumbnail}
-                            alt={product.title}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
-                            {product.title}
-                          </h4>
-                          <p className="text-[11px] text-gray-500 truncate">
-                            {product.category} &bull; {product.variety}
-                          </p>
-                          <span className="text-[10px] text-gray-400">
-                            Added {product.createdAt}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <div className="text-xs sm:text-sm font-black text-[#174B35]">
-                          ₹{product.pricePerUnit} / {product.unit}
-                        </div>
-                        <div className="text-[11px] text-gray-500 font-medium">
-                          Stock: {product.availableStock.toLocaleString()} {product.unit}
-                        </div>
-                        <div className="mt-1">
-                          {product.status === "ACTIVE" ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                              Pending
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
+              {/* Bottom Quick Add Produce Action */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                <span className="text-gray-500">Ready to sell another harvest?</span>
+                <Link
+                  href="/seller/products/add"
+                  className="font-bold text-[#174B35] hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Add New Crop</span>
+                  <span>&rarr;</span>
+                </Link>
               </div>
             </div>
 
-            {/* Right Column (5 cols): Product Status Overview & Recent Enquiries */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Product Status Overview */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
-                <div className="pb-3 border-b border-gray-100">
-                  <h3 className="text-sm sm:text-base font-black text-[#174B35] tracking-tight">
-                    Product Status Overview
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Inventory and listing verification breakdown
-                  </p>
-                </div>
-
-                {/* Status Progress Bar */}
-                <div className="space-y-3">
-                  {/* Active Bar */}
-                  <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-emerald-800 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Active Listings ({statusOverview.activeCount})
-                      </span>
-                      <span className="text-gray-600">{statusOverview.activePercentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${statusOverview.activePercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Pending Approval Bar */}
-                  <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-amber-800 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        Pending Review ({statusOverview.pendingCount})
-                      </span>
-                      <span className="text-gray-600">{statusOverview.pendingPercentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-amber-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${statusOverview.pendingPercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Out of Stock Bar */}
-                  <div>
-                    <div className="flex justify-between text-xs font-bold mb-1">
-                      <span className="text-gray-500 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                        Out of Stock ({statusOverview.outOfStockCount})
-                      </span>
-                      <span className="text-gray-600">{statusOverview.outOfStockPercentage}%</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-gray-400 h-2 rounded-full"
-                        style={{ width: `${statusOverview.outOfStockPercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Helper Note */}
-                <div className="pt-2 text-[11px] text-gray-500 bg-[#F5F5EB] p-3 rounded-xl border border-gray-200/70">
-                  💡 New products typically receive admin verification within 2 to 4 business hours.
-                </div>
-              </div>
-
-              {/* Recent Buyer Enquiries */}
-              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
+            {/* Column 2: Recent Buyer Enquiries */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
+              <div>
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                   <div>
-                    <h3 className="text-sm sm:text-base font-black text-[#174B35] tracking-tight">
+                    <h2 className="text-base sm:text-lg font-black text-[#174B35] tracking-tight">
                       Recent Buyer Enquiries
-                    </h3>
+                    </h2>
                     <p className="text-xs text-gray-500">
-                      Direct inquiries from verified commercial buyers
+                      Direct purchase requests from verified commercial buyers
                     </p>
                   </div>
                   <Link
                     href="/seller/enquiries"
                     className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline"
                   >
-                    View All &rarr;
+                    View All ({recentEnquiries.length}) &rarr;
                   </Link>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 mt-2">
                   {isLoading ? (
-                    <div className="py-6 text-center text-xs text-gray-400">Loading enquiries...</div>
+                    <div className="py-12 text-center text-xs text-gray-400">Loading enquiries...</div>
                   ) : recentEnquiries.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-gray-400">No enquiries received yet.</div>
+                    <div className="py-12 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#F5F5EB] text-[#174B35] flex items-center justify-center mx-auto text-xl">
+                        💬
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium">
+                        No buyer enquiries received yet. When buyers request quotes for your crops, they will appear here.
+                      </p>
+                    </div>
                   ) : (
                     recentEnquiries.slice(0, 3).map((enquiry) => (
                       <div
                         key={enquiry.id}
-                        className="p-3 rounded-2xl bg-gray-50 hover:bg-[#E8F0E3]/40 border border-gray-100 transition-colors space-y-1.5"
+                        className="p-3.5 rounded-2xl bg-[#F5F5EB]/60 hover:bg-[#E8F0E3]/50 border border-gray-200/80 transition-colors space-y-2"
                       >
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-gray-900 truncate">
-                            {enquiry.buyerName}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900">
+                              {enquiry.buyerName}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-normal">
+                              ({enquiry.buyerType})
+                            </span>
+                          </div>
                           <span className="text-[10px] font-semibold text-gray-400">
                             {enquiry.date}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 text-[11px] text-gray-600">
-                          <span className="font-semibold text-[#174B35]">{enquiry.productRequested}</span>
+                        <div className="flex items-center gap-2 text-xs text-gray-700 font-medium">
+                          <span className="font-bold text-[#174B35]">{enquiry.productRequested}</span>
                           <span>&bull;</span>
-                          <span className="font-bold text-gray-800">{enquiry.requestedQuantity}</span>
+                          <span className="text-gray-900 font-bold">Qty: {enquiry.requestedQuantity}</span>
+                          <span>&bull;</span>
+                          <span className="text-gray-500">{enquiry.district}</span>
                         </div>
 
-                        <p className="text-[11px] text-gray-500 italic line-clamp-1">
+                        <p className="text-xs text-gray-600 italic bg-white/70 p-2 rounded-xl border border-gray-200/50">
                           &ldquo;{enquiry.message}&rdquo;
                         </p>
 
-                        <div className="pt-1 flex items-center justify-between text-[10px]">
-                          <span className="text-gray-400">{enquiry.district} &bull; {enquiry.buyerType}</span>
-                          {enquiry.status === "NEW" ? (
-                            <span className="font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
-                              New Lead
-                            </span>
-                          ) : (
-                            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
-                              {enquiry.status}
-                            </span>
-                          )}
+                        <div className="pt-1 flex items-center justify-between text-xs">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Direct Lead
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => alert(`Connect directly with ${enquiry.buyerName} at ${enquiry.buyerPhone || "Registered Number"}`)}
+                            className="text-xs font-bold text-[#174B35] hover:underline cursor-pointer"
+                          >
+                            Respond to Buyer &rarr;
+                          </button>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
+              </div>
+
+              {/* Bottom Enquiries Info */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>0% commission on all direct buyer transactions</span>
+                <span className="font-semibold text-emerald-700">Verified Buyers</span>
               </div>
             </div>
           </div>

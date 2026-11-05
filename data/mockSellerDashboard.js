@@ -2,21 +2,121 @@
  * Ulavan Santhai - Mock Data for Seller Dashboard
  * Separated strictly from UI components and API service layers.
  * Follows the Tamil Nadu B2B agricultural marketplace field specification.
+ * Reuses the exact schema generated during Onboarding (/onboarding).
  */
 
 export const mockSellerDashboardData = {
   sellerInfo: {
     name: "Farmer Ramesh Kumar",
-    farmName: "Kongu Natural Organic Farms",
-    sellerType: "Organic producer",
-    district: "Coimbatore",
-    location: "Anaimalai, Pollachi",
+    username: "ramesh_kumar",
+    email: "ramesh@example.com",
+    mobile: "9876543210",
+    role: "Seller",
+    sellerType: "Farmer", // Default type: 'Farmer' | 'Agricultural Producer' | 'Organic Producer' | 'Raw-Material Provider' | 'Ingredient Producer' | 'Manufacturer' | 'Value-Added Manufacturer' | 'Other'
+    applicationId: "APP_US_982412",
+    status: "active",
     isPaid: true,
-    listingStatus: "ACTIVE", // 'ACTIVE' | 'UNDER_REVIEW' | 'EXPIRED'
     membershipPlan: "Annual Producer Listing (₹365/yr)",
     verifiedBadge: true,
     avatarInitial: "R",
-    applicationId: "APP_US_982412",
+
+    // Common Onboarding Location
+    district: "Coimbatore",
+    village: "Anaimalai",
+    pinCode: "642001",
+    farmAddress: "No. 12, Thottam Road, Anaimalai",
+
+    // Detailed Onboarding Business/Producer Data (Reused from /onboarding Step 2)
+    // NOTE: This describes the Seller's business entity — NOT individual marketplace product listings!
+    sellerData: {
+      district: "Coimbatore",
+      village: "Anaimalai",
+      pinCode: "642001",
+      farmAddress: "No. 12, Thottam Road, Anaimalai",
+
+      // 1. Farmer Specific
+      farmerFarmName: "Kongu Natural Organic Farms",
+      farmerLandSize: "2 - 5 Acres",
+      farmerCategory: "Landowner Farmer",
+      farmerCrops: ["Coconut", "Banana", "Turmeric"],
+      farmerAvailableQty: "50 Quintals",
+      farmerHarvestMonths: "All Year",
+      farmerMethod: "Conventional Farming",
+
+      // 2. FPO Specific
+      fpoName: "Kongu Uzhavar Producer Company Ltd",
+      fpoStructure: "Farmer Producer Company (FPC)",
+      fpoRegNumber: "U01409TZ2021PTC028491",
+      fpoMemberCount: "200 - 500 Farmers",
+      fpoCapacity: "150 Metric Tonnes",
+
+      // 3. Organic Producer Specific
+      organicFarmName: "Pristine Nature Organic Farm",
+      organicCertStatus: "Certified Organic (NPOP)",
+      organicCertAgency: "Aditi Organic Certifications",
+      organicScopeNumber: "NPOP/NAB/0017/ORG-2024",
+      organicMethod: "Panchagavya & Natural Zero-Chemical Farming",
+
+      // 4. Raw-Material Provider Specific
+      rawProviderName: "Cauvery Raw Agri Commodities",
+      rawConstitution: "Proprietorship",
+      rawStockCapacity: "100 Metric Tonnes",
+      rawCommodities: ["Turmeric Bulbs", "Coconut Copra", "Castor Seeds"],
+      rawMoq: "1 Metric Tonne",
+
+      // 5. Ingredient Producer Specific
+      ingProducerName: "Kongu Traditional Chekku Oils & Flours",
+      ingFssaiNumber: "10020042000789",
+      ingProducts: "Wood Pressed Oils, Dehydrated Onion Powder, Tamarind Paste",
+      ingTechnology: "Cold-pressed wooden chekku, Low-temp milling",
+
+      // 6. Manufacturer Specific
+      mfgSellerName: "Salem Agro Refineries Ltd",
+      mfgSellerConstitution: "Private Limited",
+      mfgProductsOffered: "Refined Agricultural Oils, Cattle Feed Pellets",
+      mfgRawMaterialsUsed: "Groundnut Pods, Cottonseed, Rice Husk",
+      mfgCapacity: "200 Metric Tonnes",
+
+      // 7. Value-Added Manufacturer Specific
+      vaBrandName: "Madurai Traditional Pickles & Snacks",
+      vaFssaiNumber: "10020042000999",
+      vaProducts: "Traditional Pickles, Millet Snacks, Sundried Vathal",
+      vaShelfLife: "9 to 12 Months",
+      vaPackaging: "Glass Jars & Multi-layer Pouches",
+
+      // 8. Other Specific
+      otherSellerName: "Specialty Herbal Agri Unit",
+      otherSpecialty: "Medicinal Herbs & Floral Extracts",
+      otherActivity: "Contract farming of rare indigenous herbs",
+    },
+
+    // Verification Documents Status (Reused from /onboarding Step 4)
+    uploadedDocs: {
+      identityProof: {
+        name: "Aadhaar_Card_Verified.pdf",
+        status: "verified",
+        label: "Government Identity Proof",
+        verifiedAt: "04 Nov 2026",
+      },
+      landRecords: {
+        name: "Patta_Chitta_Extract.pdf",
+        status: "verified",
+        label: "Land Ownership / Patta Chitta",
+        verifiedAt: "04 Nov 2026",
+      },
+      fssaiCert: {
+        name: "FSSAI_License_Certificate.pdf",
+        status: "verified",
+        label: "FSSAI Food Safety License",
+        verifiedAt: "04 Nov 2026",
+      },
+      gstCert: {
+        name: "GSTIN_Registration_Certificate.pdf",
+        status: "verified",
+        label: "GST Registration Certificate",
+        verifiedAt: "04 Nov 2026",
+      },
+    },
   },
 
   metrics: {
@@ -170,4 +270,3 @@ export const mockSellerDashboardData = {
     { id: "notif_2", text: "Country Hybrid Tomatoes submitted for verification", time: "1d ago" },
   ],
 };
-

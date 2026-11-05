@@ -35,6 +35,12 @@ export default function BasicRegistrationPage() {
   // Success Modal State
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
+  // Helper to update fields and immediately clear any active error
+  const handleFieldChange = (field, value) => {
+    if (formError) setFormError("");
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
   // Resend OTP countdown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -103,9 +109,14 @@ export default function BasicRegistrationPage() {
 
         if (res.ok && data?.success !== false) {
           isBackendSuccessful = true;
-        } else if (res.status === 400 || res.status === 409 || res.status === 422) {
-          // Explicit validation error from backend (e.g. duplicate account)
-          serverError = data?.message || "Registration failed. Please check your details.";
+        } else if (res.status === 409) {
+          // Account already exists in database
+          serverError =
+            data?.message ||
+            `An account with email "${formData.email.trim()}" already exists. Please log in instead or use another email.`;
+        } else if (res.status === 400 || res.status === 422) {
+          // Validation failure
+          serverError = data?.message || "Please check your registration details and try again.";
         } else {
           // Backend endpoint not ready (404, 500, 502, etc.) -> use seamless contract fallback
           isBackendSuccessful = true;
@@ -330,13 +341,37 @@ export default function BasicRegistrationPage() {
               </p>
             </div>
 
-            {/* Error Message Banner */}
+            {/* Error Message Banner with Clear Action & Direct Login Link */}
             {formError && (
-              <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm flex items-start gap-2.5 animate-in fade-in duration-150">
-                <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{formError}</span>
+              <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs sm:text-sm flex items-start justify-between gap-2.5 animate-in fade-in duration-150">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="space-y-1">
+                    <p className="font-semibold">{formError}</p>
+                    {formError.toLowerCase().includes("already exist") && (
+                      <Link
+                        href={`/login?email=${encodeURIComponent(formData.email.trim())}`}
+                        className="inline-flex items-center gap-1.5 font-bold text-[#174B35] hover:text-[#103A29] underline mt-1 text-xs"
+                      >
+                        <span>Log in to your existing account</span>
+                        <span>&rarr;</span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormError("")}
+                  className="p-1 rounded-lg text-red-400 hover:text-red-700 hover:bg-red-100 transition-colors shrink-0"
+                  aria-label="Dismiss error"
+                  title="Clear error"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
             )}
 
@@ -350,7 +385,7 @@ export default function BasicRegistrationPage() {
                   name="fullName"
                   type="text"
                   value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  onChange={(e) => handleFieldChange("fullName", e.target.value)}
                   placeholder="e.g. Ramesh Kumar"
                   required
                 />
@@ -364,7 +399,7 @@ export default function BasicRegistrationPage() {
                   name="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => handleFieldChange("email", e.target.value)}
                   placeholder="ramesh@example.com"
                   required
                 />
@@ -383,7 +418,7 @@ export default function BasicRegistrationPage() {
                     type="tel"
                     maxLength={10}
                     value={formData.mobile}
-                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, "") })}
+                    onChange={(e) => handleFieldChange("mobile", e.target.value.replace(/\D/g, ""))}
                     placeholder="9876543210"
                     className="w-full pl-12 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#174B35] text-sm text-gray-900"
                     required
@@ -409,7 +444,7 @@ export default function BasicRegistrationPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => handleFieldChange("password", e.target.value)}
                     placeholder="Min 8 characters"
                     className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#174B35] text-sm text-gray-900"
                     required
@@ -432,7 +467,7 @@ export default function BasicRegistrationPage() {
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
                     placeholder="Re-enter password"
                     className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#174B35] text-sm text-gray-900"
                     required
@@ -447,7 +482,7 @@ export default function BasicRegistrationPage() {
                   name="agreeTerms"
                   type="checkbox"
                   checked={formData.agreeTerms}
-                  onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
+                  onChange={(e) => handleFieldChange("agreeTerms", e.target.checked)}
                   className="h-4 w-4 text-[#174B35] focus:ring-[#174B35] border-gray-300 rounded cursor-pointer accent-[#174B35] mt-0.5"
                 />
                 <label htmlFor="agreeTerms" className="ml-2 block cursor-pointer">
