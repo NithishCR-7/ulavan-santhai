@@ -6,6 +6,7 @@
 
 import { apiFetch } from "./apiConfig";
 import { mockSellerDashboardData } from "@/data/mockSellerDashboard";
+import { getLocalStoredProducts } from "./productApi";
 
 /**
  * Helper to retrieve stored onboarding seller profile from browser session
@@ -71,10 +72,24 @@ export function getLocalSellerProfile() {
  */
 export async function getSellerDashboardData() {
   const localProfile = getLocalSellerProfile();
+  const storedProducts = getLocalStoredProducts();
+
+  const totalProducts = storedProducts.length;
+  const activeProducts = storedProducts.filter((p) => p.status === "ACTIVE").length;
+  const pendingApproval = storedProducts.filter((p) => p.status === "PENDING" || p.status === "WAITING_APPROVAL").length;
+
+  const dynamicMetrics = {
+    ...mockSellerDashboardData.metrics,
+    totalProducts,
+    activeProducts,
+    pendingApproval,
+  };
 
   const fallback = {
     ...mockSellerDashboardData,
     sellerInfo: localProfile,
+    metrics: dynamicMetrics,
+    recentProducts: storedProducts,
   };
 
   const res = await apiFetch("/api/v1/seller/dashboard", { method: "GET" }, fallback);
@@ -82,6 +97,8 @@ export async function getSellerDashboardData() {
   // If mock fallback was used, ensure the latest session onboarding profile is attached
   if (res.isMock && res.data) {
     res.data.sellerInfo = localProfile;
+    res.data.recentProducts = storedProducts;
+    res.data.metrics = dynamicMetrics;
   }
 
   return res;
