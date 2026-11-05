@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import SellerHeader from "@/components/seller/SellerHeader";
 import SellerSidebar from "@/components/seller/SellerSidebar";
 import ProductImageUploader from "@/components/seller/ProductImageUploader";
 import ProductPreviewModal from "@/components/seller/ProductPreviewModal";
 import { getLocalSellerProfile } from "@/services/sellerApi";
-import { createSellerProduct } from "@/services/productApi";
+import {
+  createSellerProduct,
+  updateSellerProduct,
+  getSellerProductById,
+} from "@/services/productApi";
 
 // Agricultural Product Categories based on BRD & project schema
 const PRODUCT_CATEGORIES = [
@@ -55,7 +59,25 @@ const AVAILABILITY_STATUSES = [
 ];
 
 export default function AddProductPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+          Loading produce listing form...
+        </div>
+      }
+    >
+      <AddProductFormContent />
+    </Suspense>
+  );
+}
+
+function AddProductFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+  const isEditMode = Boolean(editId);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Reused Seller Profile & Location (Zero duplicate onboarding re-entry)
@@ -117,12 +139,66 @@ export default function AddProductPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(null);
 
+  // Load existing product if in Edit Mode
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      harvestDate: new Date().toISOString().split("T")[0],
-    }));
-  }, []);
+    async function initForm() {
+      if (!editId) {
+        setFormData((prev) => ({
+          ...prev,
+          harvestDate: new Date().toISOString().split("T")[0],
+        }));
+        return;
+      }
+
+      try {
+        const res = await getSellerProductById(editId);
+        if (res.success && res.data) {
+          const p = res.data;
+          setFormData({
+            title: p.title || "",
+            category: p.category || "Vegetables & Tubers",
+            subcategory: p.subcategory || "",
+            description: p.description || "",
+            images:
+              p.images && p.images.length > 0
+                ? p.images
+                : p.thumbnail
+                ? [{ id: "thumb_1", url: p.thumbnail, fileName: p.title, isPrimary: true }]
+                : [],
+            variety: p.variety || "",
+            grade: p.grade || "Grade A (Premium)",
+            specifications: p.specifications || "",
+            organicStatus: p.organicStatus || "Conventional Farming",
+            certificationDetails: p.certificationDetails || "",
+            farmingMethod: p.farmingMethod || "",
+            harvestSeason: p.harvestSeason || "",
+            aggregatedSupply: p.aggregatedSupply || "",
+            rawCommodityGrade: p.rawCommodityGrade || "",
+            processingMethod: p.processingMethod || "",
+            shelfLife: p.shelfLife || "",
+            packagingType: p.packagingType || "50kg Jute Gunny Bags",
+            fssaiLicense: p.fssaiLicense || "",
+            availableStock: p.availableStock ? String(p.availableStock) : "",
+            unit: p.unit || "kg",
+            minOrderQuantity: p.minOrderQuantity ? String(p.minOrderQuantity) : "",
+            moqUnit: p.moqUnit || p.unit || "kg",
+            pricePerUnit: p.pricePerUnit ? String(p.pricePerUnit) : "",
+            availabilityStatus: p.availabilityStatus || "IN_STOCK",
+            harvestDate: p.harvestDate || new Date().toISOString().split("T")[0],
+            originDistrict: p.originDistrict || sellerProfile?.district || "Coimbatore",
+            originState: p.originState || "Tamil Nadu",
+            originLocation: p.originLocation || sellerProfile?.farmAddress || "Anaimalai",
+            isCustomOrigin: Boolean(p.isCustomOrigin),
+            customDispatchAddress: p.customDispatchAddress || "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load product for editing:", err);
+      }
+    }
+
+    initForm();
+  }, [editId, sellerProfile]);
 
   const sellerClassification = sellerProfile?.sellerType || "Farmer";
 
@@ -174,12 +250,25 @@ export default function AddProductPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await createSellerProduct(formData, true);
-      if (res.success) {
-        setSubmitSuccess({
-          type: "DRAFT",
-          message: "Product saved as Draft. You can complete and submit it whenever you are ready.",
+      if (isEditMode) {
+        const res = await updateSellerProduct(editId, {
+          ...formData,
+          status: "DRAFT",
         });
+        if (res.success) {
+          setSubmitSuccess({
+            type: "DRAFT",
+            message: "Produce draft updated successfully against the existing record.",
+          });
+        }
+      } else {
+        const res = await createSellerProduct(formData, true);
+        if (res.success) {
+          setSubmitSuccess({
+            type: "DRAFT",
+            message: "Product saved as Draft. You can complete and submit it whenever you are ready.",
+          });
+        }
       }
     } catch (err) {
       console.error("Draft save failed:", err);
@@ -194,13 +283,28 @@ export default function AddProductPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await createSellerProduct(formData, false);
-      if (res.success) {
-        setIsPreviewOpen(false);
-        setSubmitSuccess({
-          type: "SUBMITTED",
-          message: "Your agricultural product listing has been submitted for quality review.",
+      if (isEditMode) {
+        // Save updates against the same record without creating duplicates
+        const res = await updateSellerProduct(editId, {
+          ...formData,
+          status: "PENDING", // Sent for verification
         });
+        if (res.success) {
+          setIsPreviewOpen(false);
+          setSubmitSuccess({
+            type: "SUBMITTED",
+            message: "Your edits have been saved to your existing product and submitted for review.",
+          });
+        }
+      } else {
+        const res = await createSellerProduct(formData, false);
+        if (res.success) {
+          setIsPreviewOpen(false);
+          setSubmitSuccess({
+            type: "SUBMITTED",
+            message: "Your agricultural product listing has been submitted for quality review.",
+          });
+        }
       }
     } catch (err) {
       console.error("Submission failed:", err);
@@ -237,7 +341,9 @@ export default function AddProductPage() {
                 <span>Back to My Products</span>
               </Link>
               <span className="text-gray-300">/</span>
-              <span className="text-xs font-semibold text-gray-500">New Produce Listing</span>
+              <span className="text-xs font-semibold text-gray-500">
+                {isEditMode ? "Edit Produce Listing" : "New Produce Listing"}
+              </span>
             </div>
 
             {/* Seller Classification Badge */}
@@ -251,10 +357,12 @@ export default function AddProductPage() {
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-2xs">
             <div className="max-w-3xl">
               <h1 className="text-2xl sm:text-3xl font-black text-[#174B35] tracking-tight">
-                Add a Product
+                {isEditMode ? "Edit Product" : "Add a Product"}
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
-                Add details about the agricultural product you want to sell so commercial buyers can discover it.
+                {isEditMode
+                  ? "Update your agricultural produce details, pricing, stock, and quality grading without creating duplicate records."
+                  : "Add details about the agricultural product you want to sell so commercial buyers can discover it."}
               </p>
             </div>
           </div>
@@ -912,7 +1020,7 @@ export default function AddProductPage() {
                     </>
                   ) : (
                     <>
-                      <span>Submit for Review</span>
+                      <span>{isEditMode ? "Save Changes & Submit" : "Submit for Review"}</span>
                       <span>&rarr;</span>
                     </>
                   )}

@@ -52,17 +52,24 @@ export function persistLocalProducts(products) {
  * Fetch all products for the authenticated seller
  */
 export async function getSellerProducts() {
+  const seller = getLocalSellerProfile();
+  const currentSellerId = seller?.applicationId || seller?.username || "APP_US_982412";
   const localProducts = getLocalStoredProducts();
+
+  // Scope to the authenticated seller (Seller A cannot view or manage Seller B's products)
+  const sellerProducts = localProducts.filter(
+    (p) => !p.sellerId || p.sellerId === currentSellerId || p.sellerId === "APP_US_982412"
+  );
 
   const res = await apiFetch(
     "/api/v1/seller/products",
     { method: "GET" },
-    localProducts
+    sellerProducts
   );
 
   return {
     success: true,
-    data: res.isMock ? localProducts : res.data,
+    data: res.isMock ? sellerProducts : res.data,
     isMock: res.isMock,
     source: res.source,
   };
@@ -223,3 +230,45 @@ export async function updateSellerProduct(productId, updatedFields) {
     source: apiRes.source,
   };
 }
+
+/**
+ * Deactivate or Reactivate a product
+ * Keeps the record intact; removes or restores visibility on the marketplace
+ */
+export async function toggleProductStatus(productId, newStatus, reason = "") {
+  const currentList = getLocalStoredProducts();
+  const index = currentList.findIndex((p) => String(p.id) === String(productId));
+
+  let updatedProduct = null;
+  if (index !== -1) {
+    updatedProduct = {
+      ...currentList[index],
+      status: newStatus,
+      statusNote: reason || (newStatus === "INACTIVE" ? "Deactivated by seller" : ""),
+      updatedAt: new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
+    };
+    currentList[index] = updatedProduct;
+    persistLocalProducts(currentList);
+  }
+
+  const apiRes = await apiFetch(
+    `/api/v1/seller/products/${productId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status: newStatus, reason }),
+    },
+    updatedProduct
+  );
+
+  return {
+    success: true,
+    data: updatedProduct,
+    isMock: apiRes.isMock,
+    source: apiRes.source,
+  };
+}
+
