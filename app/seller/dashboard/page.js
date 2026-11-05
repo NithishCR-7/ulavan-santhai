@@ -1,0 +1,474 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import SellerHeader from "@/components/seller/SellerHeader";
+import SellerSidebar from "@/components/seller/SellerSidebar";
+import SellerMetricCard from "@/components/seller/SellerMetricCard";
+import { getSellerDashboardData } from "@/services/sellerApi";
+import { useSessionUser } from "@/services/sessionAuth";
+
+export default function SellerDashboardPage() {
+  const sessionUser = useSessionUser();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMockActive, setIsMockActive] = useState(false);
+
+  // Lazy initialization of role guard check
+  const [isBuyerOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const stored =
+        sessionStorage.getItem("ulavan_user") ||
+        sessionStorage.getItem("ulavan_registered_user") ||
+        localStorage.getItem("ulavan_registered_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const userRole = (parsed.role || "").toUpperCase();
+        return userRole === "BUYER" && userRole !== "BOTH" && userRole !== "SELLER";
+      }
+    } catch {
+      // Safe default
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadData() {
+      try {
+        const res = await getSellerDashboardData();
+        if (isMounted && res.success && res.data) {
+          setDashboardData(res.data);
+          setIsMockActive(Boolean(res.isMock));
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const sellerInfo = dashboardData?.sellerInfo || {
+    name: sessionUser?.name || "Farmer Ramesh Kumar",
+    farmName: "Kongu Natural Organic Farms",
+    sellerType: "Organic producer",
+    district: "Coimbatore",
+    location: "Anaimalai, Pollachi",
+    listingStatus: "ACTIVE",
+    isPaid: true,
+  };
+
+  const metrics = dashboardData?.metrics || {
+    totalProducts: 8,
+    activeProducts: 6,
+    pendingApproval: 2,
+    receivedEnquiries: 14,
+  };
+
+  const recentProducts = dashboardData?.recentProducts || [];
+  const recentEnquiries = dashboardData?.recentEnquiries || [];
+  const statusOverview = dashboardData?.statusOverview || {
+    activeCount: 6,
+    activePercentage: 75,
+    pendingCount: 2,
+    pendingPercentage: 25,
+    outOfStockCount: 0,
+    outOfStockPercentage: 0,
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white">
+      {/* Top Header */}
+      <SellerHeader
+        sellerName={sellerInfo.name}
+        sellerType={sellerInfo.sellerType}
+        farmName={sellerInfo.farmName}
+        isSidebarOpen={isSidebarOpen}
+        onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
+
+      {/* Main Layout Container with Sidebar */}
+      <div className="max-w-7xl mx-auto w-full flex-1 flex">
+        {/* Left Sidebar Navigation */}
+        <SellerSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+
+        {/* Right Dashboard Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6">
+          {/* Buyer Only Route Guard Notice */}
+          {isBuyerOnly && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  You are logged in with a <strong>Buyer Account</strong>. This workspace is for Agricultural Producers and Sellers.
+                </span>
+              </div>
+              <Link
+                href="/dashboard"
+                className="px-3.5 py-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs transition-colors shrink-0"
+              >
+                Switch to Buyer View
+              </Link>
+            </div>
+          )}
+
+          {/* Development Integration Status Notice */}
+          {isMockActive && (
+            <div className="px-3.5 py-2 rounded-xl bg-[#E8F0E3]/70 border border-[#729B59]/30 text-[#174B35] text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>
+                  <strong>Frontend Development Mode:</strong> Clean service layer active. Using verified mock data until backend seller endpoints are live.
+                </span>
+              </div>
+              <span className="hidden sm:inline font-mono text-[10px] bg-white/70 px-2 py-0.5 rounded border border-[#729B59]/20">
+                /api/v1/seller/dashboard
+              </span>
+            </div>
+          )}
+
+          {/* Welcome Banner & Producer Overview */}
+          <div className="bg-gradient-to-r from-[#174B35] via-[#123E2B] to-[#103A29] rounded-3xl p-6 sm:p-8 text-white shadow-sm relative overflow-hidden">
+            <div className="absolute right-0 bottom-0 w-64 h-64 bg-white/5 rounded-full pointer-events-none -mr-16 -mb-16 blur-2xl" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-200 uppercase tracking-wider">
+                    {sellerInfo.sellerType || "Farmer"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 text-[11px] font-semibold border border-emerald-400/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    Verified Producer
+                  </span>
+                </div>
+
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  Welcome, {sellerInfo.name}
+                </h1>
+                <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
+                  {sellerInfo.farmName} &bull; {sellerInfo.location}, {sellerInfo.district} District
+                </p>
+              </div>
+
+              {/* Quick Action Button: Add New Product */}
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  href="/seller/products/add"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-emerald-50 text-[#174B35] font-extrabold text-sm shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4 text-[#174B35]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add New Product</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Metric Stat Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Total Products */}
+            <SellerMetricCard
+              title="Total Products"
+              value={metrics.totalProducts}
+              subtitle="Listed in catalog"
+              badgeText="All Items"
+              badgeType="neutral"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              }
+            />
+
+            {/* 2. Active Products */}
+            <SellerMetricCard
+              title="Active Products"
+              value={metrics.activeProducts}
+              subtitle="Visible to buyers"
+              badgeText="Live on Market"
+              badgeType="success"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+
+            {/* 3. Pending Approval */}
+            <SellerMetricCard
+              title="Pending Approval"
+              value={metrics.pendingApproval}
+              subtitle="In quality review"
+              badgeText="Under Review"
+              badgeType="warning"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+
+            {/* 4. Received Enquiries */}
+            <SellerMetricCard
+              title="Received Enquiries"
+              value={metrics.receivedEnquiries}
+              subtitle="Direct buyer leads"
+              badgeText="2 Unread"
+              badgeType="info"
+              icon={
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              }
+            />
+          </div>
+
+          {/* Main Dashboard Split Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column (7 cols): Recently Added Products */}
+            <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-[#174B35] tracking-tight">
+                    Recently Added Products
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Latest agricultural produce listed for commercial trade
+                  </p>
+                </div>
+                <Link
+                  href="/seller/products"
+                  className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline"
+                >
+                  View All ({recentProducts.length}) &rarr;
+                </Link>
+              </div>
+
+              {/* Products Table / List */}
+              <div className="divide-y divide-gray-100 overflow-x-auto">
+                {isLoading ? (
+                  <div className="py-8 text-center text-xs text-gray-400">Loading products...</div>
+                ) : recentProducts.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-gray-400">No products added yet.</div>
+                ) : (
+                  recentProducts.slice(0, 4).map((product) => (
+                    <div
+                      key={product.id}
+                      className="py-3.5 flex items-center justify-between gap-4 hover:bg-gray-50/70 rounded-xl px-2 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 relative shrink-0 border border-gray-200">
+                          <Image
+                            src={product.thumbnail}
+                            alt={product.title}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-gray-900 truncate">
+                            {product.title}
+                          </h4>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {product.category} &bull; {product.variety}
+                          </p>
+                          <span className="text-[10px] text-gray-400">
+                            Added {product.createdAt}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-xs sm:text-sm font-black text-[#174B35]">
+                          ₹{product.pricePerUnit} / {product.unit}
+                        </div>
+                        <div className="text-[11px] text-gray-500 font-medium">
+                          Stock: {product.availableStock.toLocaleString()} {product.unit}
+                        </div>
+                        <div className="mt-1">
+                          {product.status === "ACTIVE" ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Right Column (5 cols): Product Status Overview & Recent Enquiries */}
+            <div className="lg:col-span-5 space-y-6">
+              {/* Product Status Overview */}
+              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
+                <div className="pb-3 border-b border-gray-100">
+                  <h3 className="text-sm sm:text-base font-black text-[#174B35] tracking-tight">
+                    Product Status Overview
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Inventory and listing verification breakdown
+                  </p>
+                </div>
+
+                {/* Status Progress Bar */}
+                <div className="space-y-3">
+                  {/* Active Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs font-bold mb-1">
+                      <span className="text-emerald-800 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        Active Listings ({statusOverview.activeCount})
+                      </span>
+                      <span className="text-gray-600">{statusOverview.activePercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${statusOverview.activePercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Pending Approval Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs font-bold mb-1">
+                      <span className="text-amber-800 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        Pending Review ({statusOverview.pendingCount})
+                      </span>
+                      <span className="text-gray-600">{statusOverview.pendingPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-amber-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${statusOverview.pendingPercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Out of Stock Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs font-bold mb-1">
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                        Out of Stock ({statusOverview.outOfStockCount})
+                      </span>
+                      <span className="text-gray-600">{statusOverview.outOfStockPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gray-400 h-2 rounded-full"
+                        style={{ width: `${statusOverview.outOfStockPercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Helper Note */}
+                <div className="pt-2 text-[11px] text-gray-500 bg-[#F5F5EB] p-3 rounded-xl border border-gray-200/70">
+                  💡 New products typically receive admin verification within 2 to 4 business hours.
+                </div>
+              </div>
+
+              {/* Recent Buyer Enquiries */}
+              <div className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-black text-[#174B35] tracking-tight">
+                      Recent Buyer Enquiries
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Direct inquiries from verified commercial buyers
+                    </p>
+                  </div>
+                  <Link
+                    href="/seller/enquiries"
+                    className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline"
+                  >
+                    View All &rarr;
+                  </Link>
+                </div>
+
+                <div className="space-y-3">
+                  {isLoading ? (
+                    <div className="py-6 text-center text-xs text-gray-400">Loading enquiries...</div>
+                  ) : recentEnquiries.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-gray-400">No enquiries received yet.</div>
+                  ) : (
+                    recentEnquiries.slice(0, 3).map((enquiry) => (
+                      <div
+                        key={enquiry.id}
+                        className="p-3 rounded-2xl bg-gray-50 hover:bg-[#E8F0E3]/40 border border-gray-100 transition-colors space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-gray-900 truncate">
+                            {enquiry.buyerName}
+                          </span>
+                          <span className="text-[10px] font-semibold text-gray-400">
+                            {enquiry.date}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                          <span className="font-semibold text-[#174B35]">{enquiry.productRequested}</span>
+                          <span>&bull;</span>
+                          <span className="font-bold text-gray-800">{enquiry.requestedQuantity}</span>
+                        </div>
+
+                        <p className="text-[11px] text-gray-500 italic line-clamp-1">
+                          &ldquo;{enquiry.message}&rdquo;
+                        </p>
+
+                        <div className="pt-1 flex items-center justify-between text-[10px]">
+                          <span className="text-gray-400">{enquiry.district} &bull; {enquiry.buyerType}</span>
+                          {enquiry.status === "NEW" ? (
+                            <span className="font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+                              New Lead
+                            </span>
+                          ) : (
+                            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                              {enquiry.status}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

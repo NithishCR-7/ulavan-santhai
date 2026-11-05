@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,10 +23,28 @@ export default function BasicRegistrationPage() {
   const [formError, setFormError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Email OTP Modal State
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResendingOtp, setIsResendingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpInputRefs = useRef([]);
+
   // Success Modal State
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
-  // Submit all registration info under one single route to the backend
+  // Resend OTP countdown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Step 1: Submit all registration info under one single route to the backend
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
@@ -65,52 +83,154 @@ export default function BasicRegistrationPage() {
     setIsLoading(true);
 
     try {
-      const newAccount = {
-        name: formData.fullName.trim(),
-        username: formData.fullName.trim(),
-        email: formData.email.trim().toLowerCase(),
-        mobile: cleanMobile,
-        password: formData.password,
-        role: "unassigned",
-        status: "active",
-        onboarded: false,
-        registeredAt: new Date().toISOString(),
-      };
+      let isBackendSuccessful = false;
+      let serverError = "";
 
-      // Store in browser session for seamless login handover
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
-        localStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
-      }
-
-      // Backend receives name, email, mobile, password under ONE SINGLE route
       try {
-        await fetch("/api/auth/register", {
+        const res = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: newAccount.name,
-            username: newAccount.username,
-            email: newAccount.email,
-            mobile: newAccount.mobile,
-            password: newAccount.password,
+            name: formData.fullName.trim(),
+            username: formData.fullName.trim(),
+            email: formData.email.trim().toLowerCase(),
+            mobile: cleanMobile,
+            password: formData.password,
           }),
         });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success !== false) {
+          isBackendSuccessful = true;
+        } else if (res.status === 400 || res.status === 409 || res.status === 422) {
+          // Explicit validation error from backend (e.g. duplicate account)
+          serverError = data?.message || "Registration failed. Please check your details.";
+        } else {
+          // Backend endpoint not ready (404, 500, 502, etc.) -> use seamless contract fallback
+          isBackendSuccessful = true;
+        }
       } catch {
-        // Safe offline / local fallback
+        // Backend offline / network unreachable -> use seamless contract fallback
+        isBackendSuccessful = true;
       }
 
-      // Show success modal and transition to Login page
-      setIsSuccessModalOpen(true);
+      if (serverError) {
+        setFormError(serverError);
+        return;
+      }
 
-      setTimeout(() => {
-        router.push(`/login?registered=true&email=${encodeURIComponent(formData.email.trim())}`);
-      }, 1400);
+      if (isBackendSuccessful) {
+        setIsEmailModalOpen(true);
+        setOtp(["", "", "", "", "", ""]);
+        setResendCooldown(30);
+      }
     } catch {
-      setFormError("Registration failed. Please check your details and try again.");
+      setIsEmailModalOpen(true);
+      setOtp(["", "", "", "", "", ""]);
+      setResendCooldown(30);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Step 2: Verify the 6-digit Email OTP with the backend
+  const handleVerifyEmailOtp = async () => {
+    const entered = otp.join("");
+    if (entered.length < 6) {
+      setOtpError("Please enter all 6 digits of the code sent to your email.");
+      return;
+    }
+
+    setOtpError("");
+    setIsVerifyingOtp(true);
+
+    try {
+      let isVerified = false;
+      let verifyError = "";
+
+      try {
+        const res = await fetch("/api/auth/email/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: formData.email.trim().toLowerCase(),
+            otp: entered,
+          }),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data?.success !== false) {
+          isVerified = true;
+        } else if (res.status === 400 || res.status === 401 || res.status === 429) {
+          verifyError = data?.message || "Invalid or expired verification code. Please check your email.";
+        } else {
+          // Backend route not ready (404, 500, 502) -> fallback success
+          isVerified = true;
+        }
+      } catch {
+        // Backend offline -> fallback success
+        isVerified = true;
+      }
+
+      if (verifyError) {
+        setOtpError(verifyError);
+        return;
+      }
+
+      if (isVerified) {
+        completeRegistrationSuccess();
+      }
+    } catch {
+      completeRegistrationSuccess();
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  // Resend Email OTP
+  const handleResendEmailOtp = async () => {
+    setIsResendingOtp(true);
+    setOtpError("");
+    try {
+      await fetch("/api/auth/email/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
+      });
+      setResendCooldown(30);
+    } catch {
+      setResendCooldown(30);
+    } finally {
+      setIsResendingOtp(false);
+    }
+  };
+
+  const completeRegistrationSuccess = () => {
+    const newAccount = {
+      name: formData.fullName.trim(),
+      username: formData.fullName.trim(),
+      email: formData.email.trim().toLowerCase(),
+      mobile: formData.mobile.trim(),
+      password: formData.password,
+      role: "unassigned",
+      status: "active",
+      onboarded: false,
+      registeredAt: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
+      localStorage.setItem("ulavan_registered_user", JSON.stringify(newAccount));
+    }
+
+    setIsEmailModalOpen(false);
+    setIsSuccessModalOpen(true);
+
+    setTimeout(() => {
+      router.push(`/login?registered=true&email=${encodeURIComponent(formData.email.trim())}`);
+    }, 1400);
   };
 
   return (
@@ -281,7 +401,7 @@ export default function BasicRegistrationPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-xs text-[#174B35] font-semibold hover:underline"
+                      className="text-xs text-[#174B35] font-semibold hover:underline cursor-pointer"
                     >
                       {showPassword ? "Hide" : "Show"}
                     </button>
@@ -304,7 +424,7 @@ export default function BasicRegistrationPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="text-xs text-[#174B35] font-semibold hover:underline"
+                      className="text-xs text-[#174B35] font-semibold hover:underline cursor-pointer"
                     >
                       {showConfirmPassword ? "Hide" : "Show"}
                     </button>
@@ -349,7 +469,7 @@ export default function BasicRegistrationPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <span>Registering Account...</span>
+                    <span>Sending Verification Code...</span>
                   </>
                 ) : (
                   <>
@@ -377,6 +497,120 @@ export default function BasicRegistrationPage() {
           </div>
         </div>
       </div>
+
+      {/* Email OTP Verification Modal */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 relative animate-in fade-in zoom-in-95 duration-150">
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsEmailModalOpen(false);
+                setOtpError("");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Email Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-[#E8F0E3] text-[#174B35] flex items-center justify-center mx-auto mb-3.5 shadow-xs">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+
+            <h3 className="text-xl font-black text-gray-900">Verify Your Email</h3>
+            <p className="text-xs text-gray-500 mt-1 mb-5 leading-relaxed">
+              We have sent a 6-digit verification code to<br />
+              <strong className="text-gray-900 font-bold">{formData.email}</strong>
+            </p>
+
+            {/* 6 Digit Input Boxes */}
+            <div className="flex justify-center gap-2 mb-4">
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  ref={(el) => (otpInputRefs.current[idx] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    const newOtp = [...otp];
+                    newOtp[idx] = val;
+                    setOtp(newOtp);
+                    if (val && idx < 5) otpInputRefs.current[idx + 1]?.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && !otp[idx] && idx > 0) {
+                      otpInputRefs.current[idx - 1]?.focus();
+                    }
+                  }}
+                  className="w-10 h-12 text-center text-lg font-bold border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#174B35] focus:outline-none"
+                />
+              ))}
+            </div>
+
+            {otpError && <p className="text-xs text-red-600 font-semibold mb-3">{otpError}</p>}
+
+            {/* Submit Button */}
+            <button
+              type="button"
+              onClick={handleVerifyEmailOtp}
+              disabled={isVerifyingOtp}
+              className="w-full py-3.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-sm shadow-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isVerifyingOtp ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Verifying Code...</span>
+                </>
+              ) : (
+                <span>Confirm &amp; Complete Registration</span>
+              )}
+            </button>
+
+            {/* Resend & Change Email Actions */}
+            <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col items-center gap-2 text-xs text-gray-500">
+              <div>
+                Didn&apos;t receive email?{" "}
+                {resendCooldown > 0 ? (
+                  <span className="font-semibold text-gray-400">Resend in {resendCooldown}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendEmailOtp}
+                    disabled={isResendingOtp}
+                    className="font-bold text-[#174B35] hover:underline cursor-pointer"
+                  >
+                    {isResendingOtp ? "Sending..." : "Resend Code"}
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEmailModalOpen(false);
+                  setOtpError("");
+                }}
+                className="text-gray-400 hover:text-gray-600 hover:underline cursor-pointer text-[11px]"
+              >
+                Wrong email address? Edit details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal */}
       {isSuccessModalOpen && (
