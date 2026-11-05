@@ -74,6 +74,32 @@ export async function getSellerDashboardData() {
   const localProfile = getLocalSellerProfile();
   const storedProducts = getLocalStoredProducts();
 
+  let storedEnquiries = mockSellerDashboardData.recentEnquiries;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("ulavan_enquiries");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          storedEnquiries = parsed.slice(0, 5).map((e) => ({
+            id: e.id,
+            buyerName: e.buyerName,
+            buyerType: e.buyerType,
+            district: e.buyerDistrict,
+            productRequested: e.productTitle,
+            requestedQuantity: `${e.requestedQuantity} ${e.unitRequested}`,
+            message: e.messages?.[0]?.message || e.subject,
+            date: e.formattedDate || "Today",
+            status: e.status,
+            buyerPhone: e.buyerPhone,
+          }));
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+  }
+
   const totalProducts = storedProducts.length;
   const activeProducts = storedProducts.filter((p) => p.status === "ACTIVE").length;
   const pendingApproval = storedProducts.filter((p) => p.status === "PENDING" || p.status === "WAITING_APPROVAL").length;
@@ -83,6 +109,7 @@ export async function getSellerDashboardData() {
     totalProducts,
     activeProducts,
     pendingApproval,
+    receivedEnquiries: storedEnquiries.length,
   };
 
   const fallback = {
@@ -90,6 +117,7 @@ export async function getSellerDashboardData() {
     sellerInfo: localProfile,
     metrics: dynamicMetrics,
     recentProducts: storedProducts,
+    recentEnquiries: storedEnquiries,
   };
 
   const res = await apiFetch("/api/v1/seller/dashboard", { method: "GET" }, fallback);
@@ -98,6 +126,7 @@ export async function getSellerDashboardData() {
   if (res.isMock && res.data) {
     res.data.sellerInfo = localProfile;
     res.data.recentProducts = storedProducts;
+    res.data.recentEnquiries = storedEnquiries;
     res.data.metrics = dynamicMetrics;
   }
 

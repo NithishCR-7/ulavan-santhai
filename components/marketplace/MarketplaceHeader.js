@@ -47,6 +47,9 @@ export default function MarketplaceHeader() {
           <Link href="/dashboard" className="hover:text-[#174B35] transition-colors">
             Buyer Dashboard
           </Link>
+          <Link href="/buyer/enquiries" className="hover:text-[#174B35] transition-colors">
+            My Enquiries
+          </Link>
           <Link href="/seller/dashboard" className="hover:text-[#174B35] transition-colors">
             Seller Workspace
           </Link>
@@ -89,3 +92,4 @@ export default function MarketplaceHeader() {
     </header>
   );
 }
+

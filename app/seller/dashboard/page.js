@@ -423,13 +423,12 @@ export default function SellerDashboardPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             Direct Lead
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => alert(`Connect directly with ${enquiry.buyerName} at ${enquiry.buyerPhone || "Registered Number"}`)}
-                            className="text-xs font-bold text-[#174B35] hover:underline cursor-pointer"
+                          <Link
+                            href="/seller/enquiries"
+                            className="text-xs font-bold text-[#174B35] hover:underline"
                           >
                             Respond to Buyer &rarr;
-                          </button>
+                          </Link>
                         </div>
                       </div>
                     ))

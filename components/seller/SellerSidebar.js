@@ -1,10 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function SellerSidebar({ isOpen = false, onClose }) {
   const pathname = usePathname() || "/seller/dashboard";
+
+  // Initialize unread enquiries count lazily from persistent storage
+  const [newEnquiriesCount] = useState(() => {
+    if (typeof window === "undefined") return 2;
+    try {
+      const stored = localStorage.getItem("ulavan_enquiries");
+      if (stored) {
+        const list = JSON.parse(stored);
+        if (Array.isArray(list)) {
+          return list.filter((e) => e.status === "NEW").length;
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+    return 2;
+  });
 
   const navItems = [
     {
@@ -44,7 +62,7 @@ export default function SellerSidebar({ isOpen = false, onClose }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       ),
-      badge: "2 New",
+      badge: newEnquiriesCount > 0 ? `${newEnquiriesCount} New` : undefined,
       badgeColor: "bg-emerald-100 text-emerald-800",
     },
     {
