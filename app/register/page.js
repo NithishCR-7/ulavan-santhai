@@ -25,7 +25,6 @@ export default function BasicRegistrationPage() {
 
   // Email OTP Modal State
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [backendMode, setBackendMode] = useState("offline"); // "connected" | "offline"
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -90,75 +89,59 @@ export default function BasicRegistrationPage() {
     setIsLoading(true);
 
     try {
-      let isBackendOnline = false;
-      let serverError = "";
-
-      // 4-second timeout to quickly detect if Express backend is offline
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      try {
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            name: formData.fullName.trim(),
-            username: formData.fullName.trim(),
-            email: formData.email.trim().toLowerCase(),
-            mobile: cleanMobile,
-            password: formData.password,
-          }),
-        });
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          name: formData.fullName.trim(),
+          username: formData.fullName.trim(),
+          email: formData.email.trim().toLowerCase(),
+          mobile: cleanMobile,
+          password: formData.password,
+        }),
+      });
 
-        clearTimeout(timeoutId);
-        const data = await res.json().catch(() => null);
+      clearTimeout(timeoutId);
+      const data = await res.json().catch(() => null);
 
-        if (res.ok && data?.success !== false) {
-          isBackendOnline = true;
-          setBackendMode("connected");
-        } else if (res.status === 409) {
-          // Account already exists in database
-          serverError =
-            data?.message ||
-            `An account with email "${formData.email.trim()}" already exists in the backend database. Please log in instead or use another email.`;
-        } else if (res.status === 400 || res.status === 422) {
-          // Validation failure
-          serverError = data?.message || "Please check your registration details and try again.";
-        } else {
-          // Server returned 500, 502, 504 -> backend unreachable
-          setBackendMode("offline");
-        }
-      } catch {
-        // Backend offline / network unreachable / aborted
-        clearTimeout(timeoutId);
-        setBackendMode("offline");
+      if (res.ok && data?.success !== false) {
+        // Backend successfully created registration and sent OTP to email
+        setIsEmailModalOpen(true);
+        setOtp(["", "", "", "", "", ""]);
+        setResendCooldown(30);
+      } else if (res.status === 409) {
+        setFormError(
+          data?.message ||
+            `An account with email "${formData.email.trim()}" already exists in the backend database. Please log in instead or use another email.`
+        );
+      } else if (res.status === 400 || res.status === 422) {
+        setFormError(data?.message || "Please check your registration details and try again.");
+      } else {
+        setFormError(
+          data?.message ||
+            `Backend error (${res.status}): Server could not process registration. Please check backend connection.`
+        );
       }
-
-      if (serverError) {
-        setFormError(serverError);
-        return;
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setFormError("Connection timed out: Backend server is not responding. Please check if the Express backend is running.");
+      } else {
+        setFormError("Unable to connect to the backend server. Please ensure the backend is running and reachable.");
       }
-
-      // Open verification modal
-      setIsEmailModalOpen(true);
-      setOtp(["", "", "", "", "", ""]);
-      setResendCooldown(30);
-    } catch {
-      setBackendMode("offline");
-      setIsEmailModalOpen(true);
-      setOtp(["", "", "", "", "", ""]);
-      setResendCooldown(30);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify the 6-digit Email OTP
+  // Step 2: Verify the 6-digit Email OTP with backend
   const handleVerifyEmailOtp = async () => {
     const entered = otp.join("");
     if (entered.length < 6) {
-      setOtpError("Please enter all 6 digits of the verification code.");
+      setOtpError("Please enter all 6 digits of the verification code sent to your email.");
       return;
     }
 
@@ -166,25 +149,22 @@ export default function BasicRegistrationPage() {
     setIsVerifyingOtp(true);
 
     try {
-      if (backendMode === "offline") {
-        // In Offline Demo Mode, accept demo code 123456 or any 6 digits
-        if (entered !== "123456" && entered.length === 6) {
-          // Allow testing with 123456 or entered code
-        }
-        completeRegistrationSuccess();
-        return;
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      // Backend is connected - verify against real API
-      let isVerified = false;
-      let verifyError = "";
+      // Call Express email verify endpoint
+      let res = await fetch("/api/auth/email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          email: formData.email.trim().toLowerCase(),
+          otp: entered,
+        }),
+      }).catch(() => null);
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-        // Try /api/auth/verify-otp or /api/auth/email/verify
-        let res = await fetch("/api/auth/verify-otp", {
+      if (!res || res.status === 404) {
+        res = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
@@ -194,68 +174,51 @@ export default function BasicRegistrationPage() {
             code: entered,
           }),
         }).catch(() => null);
+      }
 
-        if (!res || res.status === 404) {
-          res = await fetch("/api/auth/email/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: formData.email.trim().toLowerCase(),
-              otp: entered,
-            }),
-          }).catch(() => null);
-        }
+      clearTimeout(timeoutId);
 
-        clearTimeout(timeoutId);
-
-        if (res && res.ok) {
-          const data = await res.json().catch(() => null);
-          if (data && data.success !== false) {
-            isVerified = true;
-          } else {
-            verifyError = data?.message || "Invalid or expired verification code.";
-          }
-        } else if (res && (res.status === 400 || res.status === 401)) {
-          const data = await res.json().catch(() => null);
-          verifyError = data?.message || "Invalid or expired verification code. Please check your email.";
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.success !== false) {
+          completeRegistrationSuccess();
+          return;
         } else {
-          // If backend suddenly became unresponsive during verification
-          isVerified = true;
+          setOtpError(data?.message || "Invalid or expired verification code.");
         }
-      } catch {
-        isVerified = true;
-      }
-
-      if (verifyError) {
-        setOtpError(verifyError);
-        return;
-      }
-
-      if (isVerified) {
-        completeRegistrationSuccess();
+      } else if (res && (res.status === 400 || res.status === 401)) {
+        const data = await res.json().catch(() => null);
+        setOtpError(data?.message || "Invalid or expired verification code. Please check your email.");
+      } else {
+        const data = await res?.json().catch(() => null);
+        setOtpError(data?.message || "Verification failed. Please check the code and try again.");
       }
     } catch {
-      completeRegistrationSuccess();
+      setOtpError("Unable to reach backend server to verify code. Please try again.");
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
-  // Resend Email OTP
+  // Resend Email OTP via backend
   const handleResendEmailOtp = async () => {
     setIsResendingOtp(true);
     setOtpError("");
     try {
-      if (backendMode === "connected") {
-        await fetch("/api/auth/email/resend", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
-        }).catch(() => null);
+      const res = await fetch("/api/auth/email/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email.trim().toLowerCase() }),
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        setResendCooldown(30);
+      } else {
+        const data = await res?.json().catch(() => null);
+        setOtpError(data?.message || "Failed to resend verification code.");
       }
-      setResendCooldown(30);
     } catch {
-      setResendCooldown(30);
+      setOtpError("Failed to connect to server to resend code.");
     } finally {
       setIsResendingOtp(false);
     }
@@ -603,46 +566,10 @@ export default function BasicRegistrationPage() {
             </div>
 
             <h3 className="text-xl font-black text-gray-900">Verify Your Email</h3>
-            <p className="text-xs text-gray-500 mt-1 mb-4 leading-relaxed">
+            <p className="text-xs text-gray-500 mt-1 mb-6 leading-relaxed">
               We have sent a 6-digit verification code to<br />
               <strong className="text-gray-900 font-bold">{formData.email}</strong>
             </p>
-
-            {/* Backend Connection Status Banner */}
-            {backendMode === "offline" ? (
-              <div className="mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-left">
-                <div className="flex items-start gap-2">
-                  <span className="text-amber-600 text-sm mt-0.5">⚠️</span>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-amber-900">Backend Server Offline</p>
-                    <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-                      Express backend could not be reached at the configured IP. No email was sent to your inbox.
-                    </p>
-                    <div className="mt-2 flex items-center justify-between bg-white/80 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                      <span className="text-[11px] text-amber-900 font-medium">
-                        Demo Testing Code: <strong className="font-mono text-xs font-bold text-[#174B35]">123456</strong>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setOtp(["1", "2", "3", "4", "5", "6"])}
-                        className="text-[11px] font-bold text-[#174B35] hover:underline cursor-pointer"
-                      >
-                        Auto-fill
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4 p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="text-emerald-600 text-sm">✅</span>
-                  <p className="text-[11px] font-semibold text-emerald-800 leading-tight">
-                    Express backend generated and dispatched OTP to your email. Check your Inbox &amp; Spam.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* 6 Digit Input Boxes */}
             <div className="flex justify-center gap-2 mb-4">
