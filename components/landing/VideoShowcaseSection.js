@@ -12,7 +12,7 @@ export default function VideoShowcaseSection() {
   const posterImage = "/images/hero-aerial-fields.jpg";
 
   return (
-    <section className="relative h-72 sm:h-96 md:h-[420px] w-full overflow-hidden bg-[#103A29] flex items-center justify-center">
+    <section className="relative h-44 sm:h-56 md:h-64 w-full overflow-hidden bg-[#103A29] flex items-center justify-center">
       {/* Real Agricultural Video Footage Background */}
       <div className="absolute inset-0 w-full h-full">
         <video
@@ -41,10 +41,8 @@ export default function VideoShowcaseSection() {
 
       {/* Minimal Message Overlay */}
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center">
-        <span className="text-xs uppercase tracking-widest text-[#E8F0E3] font-bold block mb-3 drop-shadow-xs">
-          Direct Agricultural Trade
-        </span>
-        <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-md">
+
+        <h2 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
           &ldquo;From the Field to New Opportunities.&rdquo;
         </h2>
         <div className="w-16 h-1 bg-[#729B59] mx-auto mt-5 rounded-full" />

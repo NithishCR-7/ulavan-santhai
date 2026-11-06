@@ -11,45 +11,42 @@ export default function HowItWorksSection() {
       description: "Register on Ulavan Santhai as a buyer, seller or both.",
       image:
         "https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=800&q=80",
-      alt: "Indian farmer or agricultural professional creating an account using smartphone in natural light",
+      alt: "Person using a smartphone to enter information",
     },
     {
       number: "02",
       title: "Complete Your Profile",
       description: "Add your personal or business details and relevant information.",
       image:
-        "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=800&q=80",
-      alt: "Agricultural business manager completing onboarding details and documentation",
+        "/images/photographs/business-profile.jpg",
+      alt: "Business professionals reviewing information on a tablet",
     },
     {
       number: "03",
       title: "Discover & Showcase",
       description: "Explore agricultural products or showcase what you supply.",
       image:
-        "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=800&q=80",
-      alt: "Fresh farm harvest tomatoes and agricultural produce arranged for market display",
+        "/images/photographs/market-crates.jpg",
+      alt: "Fresh vegetables displayed in market crates",
     },
     {
       number: "04",
       title: "Connect & Grow",
       description: "Discover relevant buyers, sellers and business opportunities.",
       image:
-        "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80",
-      alt: "Agricultural buyer and seller establishing partnership and discussing farm produce",
+        "/images/photographs/wholesale-market.jpg",
+      alt: "Agricultural workers sorting harvested crops together",
     },
   ];
 
   return (
-    <section id="how-it-works" className="py-24 sm:py-32 bg-[#F5F5EB] border-b border-gray-200/60">
+    <section id="how-it-works" className="py-14 sm:py-20 bg-[#F5F5EB] border-b border-gray-200/60 scroll-mt-28 sm:scroll-mt-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading & Subheading */}
-        <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider mb-4 border border-[#729B59]/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#729B59]" />
-            <span>Platform User Journey</span>
-          </div>
+        <div className="max-w-3xl mx-auto text-center mb-9 sm:mb-12">
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#174B35] tracking-tight leading-tight">
+
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight">
             How Ulavan Santhai Works
           </h2>
 
@@ -67,7 +64,7 @@ export default function HowItWorksSection() {
 
             {/* 4 Evenly Spaced Step Nodes */}
             <div className="grid grid-cols-4 gap-8 relative z-10">
-              {steps.map((step) => (
+              {steps.map((step, index) => (
                 <div key={step.number} className="flex justify-center">
                   <div className="w-10 h-10 rounded-full bg-[#174B35] text-white font-mono text-xs font-bold flex items-center justify-center ring-4 ring-[#F5F5EB] shadow-xs transition-all duration-300">
                     {step.number}
@@ -79,7 +76,7 @@ export default function HowItWorksSection() {
 
           {/* 4 Step Columns: Rounded Rectangular Photographs + Typography */}
           <div className="grid grid-cols-4 gap-8">
-            {steps.map((step) => (
+            {steps.map((step, index) => (
               <div
                 key={step.number}
                 className="group flex flex-col transition-all duration-300"
@@ -97,7 +94,7 @@ export default function HowItWorksSection() {
                 </div>
 
                 {/* Step Metadata & Typography */}
-                <div className="pt-5 text-left">
+                <div className={`tone-card rounded-2xl p-5 mt-4 flex-1 text-left ${index % 2 ? "tone-green" : "tone-white"}`}>
                   <span className="text-[11px] font-mono font-bold tracking-wider uppercase text-[#729B59] block mb-1">
                     Step {step.number}
                   </span>
@@ -121,7 +118,7 @@ export default function HowItWorksSection() {
           <div className="absolute left-4 sm:left-5 top-5 bottom-8 w-0.5 bg-gradient-to-b from-[#174B35] via-[#729B59] to-[#174B35]/30" />
 
           <div className="space-y-10 sm:space-y-12">
-            {steps.map((step) => (
+            {steps.map((step, index) => (
               <div key={step.number} className="relative flex items-start gap-5 sm:gap-6 group">
                 {/* Milestone Node on the Line */}
                 <div className="absolute -left-[29px] sm:-left-[33px] top-1.5 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#174B35] text-white font-mono text-xs font-bold flex items-center justify-center ring-4 ring-[#F5F5EB] shadow-xs shrink-0 z-10">
@@ -129,7 +126,7 @@ export default function HowItWorksSection() {
                 </div>
 
                 {/* Step Card Content */}
-                <div className="flex-1 bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs">
+                <div className={`tone-card flex-1 rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-xs ${index % 2 ? "tone-green" : "tone-white"}`}>
                   {/* Photograph */}
                   <div className="relative aspect-[16/10] w-full rounded-xl overflow-hidden bg-gray-100 mb-4">
                     <Image

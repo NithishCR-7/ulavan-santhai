@@ -9,9 +9,8 @@ export default function AudienceSection() {
       number: "01",
       title: "Farmers & Sellers",
       description: "Showcase your agricultural products and reach potential buyers.",
-      image:
-        "https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&w=1000&q=80",
-      alt: "Indian farmers harvesting fresh agricultural produce in lush green fields",
+      image: "/images/photographs/farmer-harvest.jpg",
+      alt: "Farmer holding freshly harvested vegetables in a field",
       categoryBadge: "Producers & FPOs",
       actionText: "Connect as Seller",
       link: "/register?role=SELLER",
@@ -20,9 +19,8 @@ export default function AudienceSection() {
       number: "02",
       title: "Buyers & Traders",
       description: "Discover agricultural products and connect with suppliers.",
-      image:
-        "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1000&q=80",
-      alt: "Commercial wholesale buyer inspecting farm fresh harvest at regional market",
+      image: "/images/photographs/market-crates.jpg",
+      alt: "Cabbages and onions stacked in produce crates at a market",
       categoryBadge: "Commercial Buyers",
       actionText: "Connect as Buyer",
       link: "/register?role=BUYER",
@@ -31,9 +29,8 @@ export default function AudienceSection() {
       number: "03",
       title: "Manufacturers & Processors",
       description: "Explore agricultural sourcing and business connections.",
-      image:
-        "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=1000&q=80",
-      alt: "Modern agricultural food processing and produce sorting facility",
+      image: "/images/photographs/produce-processing.jpg",
+      alt: "Agricultural produce sorting, grading and processing equipment in a modern food processing facility",
       categoryBadge: "Agro Industries",
       actionText: "Explore Sourcing",
       link: "/register?role=BUYER",
@@ -42,9 +39,8 @@ export default function AudienceSection() {
       number: "04",
       title: "Wholesalers & Businesses",
       description: "Discover products and build supplier relationships.",
-      image:
-        "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1000&q=80",
-      alt: "Organised agricultural wholesale warehouse crates and logistics distribution",
+      image: "/images/photographs/produce-warehouse.jpg",
+      alt: "Worker sorting baskets of lychee fruit in a produce warehouse",
       categoryBadge: "Bulk Distribution",
       actionText: "Build Relationships",
       link: "/register?role=BOTH",
@@ -52,16 +48,13 @@ export default function AudienceSection() {
   ];
 
   return (
-    <section className="py-24 sm:py-32 bg-white border-b border-gray-100">
+    <section id="who-its-for" className="py-14 sm:py-20 bg-white border-b border-gray-100 scroll-mt-28 sm:scroll-mt-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading & Introduction */}
-        <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider mb-4 border border-[#729B59]/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#729B59]" />
-            <span>Marketplace Community</span>
-          </div>
+        <div className="max-w-3xl mx-auto text-center mb-9 sm:mb-12">
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#174B35] tracking-tight leading-tight">
+
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight font-display">
             Connecting Every Part of Agriculture
           </h2>
 
@@ -70,21 +63,21 @@ export default function AudienceSection() {
           </p>
         </div>
 
-        {/* Four Audience Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7">
-          {cards.map((card) => (
+        {/* 1. Four Audience Cards Grid: Consistent Dimensions, Typography & Authentic Photography */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7 items-stretch">
+          {cards.map((card, index) => (
             <div
               key={card.number}
-              className="group bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-200/80 shadow-xs hover:shadow-xl hover:border-[#729B59]/50 transition-all duration-300 flex flex-col h-full hover:-translate-y-1.5"
+              className="group bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-200/80 shadow-xs hover:shadow-xl hover:border-[#174B35]/40 transition-all duration-300 flex flex-col h-full hover:-translate-y-1"
             >
-              {/* Landscape Photograph with Number Badge */}
+              {/* Landscape Photograph with Matching Aspect Ratio */}
               <div className="relative aspect-[16/11] w-full overflow-hidden bg-gray-100">
                 <Image
                   src={card.image}
                   alt={card.alt}
                   fill
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  className="object-cover group-hover:scale-106 transition-transform duration-500 ease-out"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                 />
 
                 {/* Numbered Pill Badge */}
@@ -102,14 +95,14 @@ export default function AudienceSection() {
                 </div>
               </div>
 
-              {/* Card Body */}
-              <div className="p-6 flex flex-col flex-1 justify-between bg-white">
+              {/* Card Body with Aligned Layout */}
+              <div className={`tone-card tone-body p-6 sm:p-7 flex flex-col flex-1 justify-between ${index % 2 ? "tone-green" : "tone-white"}`}>
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[#174B35] group-hover:text-[#729B59] transition-colors tracking-tight">
+                  <h3 className="text-lg sm:text-xl font-bold text-[#174B35] tracking-tight font-display">
                     {card.number}. {card.title}
                   </h3>
 
-                  <p className="mt-2.5 text-sm text-[#68746A] leading-relaxed">
+                  <p className="mt-2.5 text-sm text-[#5C6B5E] leading-relaxed font-sans">
                     {card.description}
                   </p>
                 </div>
@@ -118,7 +111,7 @@ export default function AudienceSection() {
                 <div className="mt-6 pt-4 border-t border-gray-100">
                   <Link
                     href={card.link}
-                    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#174B35] group-hover:text-[#729B59] transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#174B35] group-hover:text-[#729B59] transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#174B35] rounded-sm"
                   >
                     <span>{card.actionText}</span>
                     <svg
@@ -140,6 +133,7 @@ export default function AudienceSection() {
             </div>
           ))}
         </div>
+
       </div>
     </section>
   );

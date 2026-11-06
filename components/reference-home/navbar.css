@@ -1,0 +1,127 @@
+.reference-home { width:100%; font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height:1.7; color:#263238; overflow-x:clip; }
+.reference-home p { margin-bottom:1em; }
+.reference-home h3 { font-weight:700; margin-bottom:1em; }
+.reference-home ul { list-style:disc; }
+.reference-home ol { list-style:decimal; }
+.reference-home .soil-steps { list-style:none; }
+.reference-home .soil-title h2 br { display:block; }
+.reference-home dialog { margin:auto; }
+.reference-home section[id], .reference-home footer[id] { scroll-margin-top:110px; }
+.reference-home .reference-header { position:fixed; inset:0 0 auto; z-index:50; padding:5px 0; background:linear-gradient(#20342599,#20342550); border:0; transition:background .2s,box-shadow .2s; }
+.reference-home .reference-header.is-scrolled { background:#fff; box-shadow:0 1px 12px #103e2010; }
+.reference-home .reference-nav { max-width:1720px; min-height:78px; margin:auto; padding:0 5.5%; display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.reference-home .reference-brand { color:#fff; text-decoration:none; white-space:nowrap; font-size:clamp(20px,1.8vw,30px); font-weight:850; letter-spacing:-1px; line-height:1.2; text-shadow:0 1px 4px #0003; }
+.reference-home .is-scrolled .reference-brand { color:#063d22; text-shadow:none; }
+.reference-home .reference-navigation { display:contents; }
+.reference-home .reference-pill { display:flex; align-items:center; padding:6px; background:#063d22; border-radius:999px; box-shadow:0 3px 6px #0002; gap:4px; }
+.reference-home .reference-pill a { padding:10px 23px; border-radius:999px; color:#e8ede5; font-size:16px; font-weight:700; white-space:nowrap; text-decoration:none; line-height:1.6; }
+.reference-home .reference-pill a:hover { background:#ffffff10; }
+.reference-home .reference-pill a.is-active { color:#15220d; background:#c5f340; }
+.reference-home .reference-contact { display:flex; align-items:center; justify-content:space-between; gap:18px; background:#c5f340; color:#15220d; padding:8px 9px 8px 28px; border-radius:999px; font-size:18px; font-weight:750; text-decoration:none; white-space:nowrap; box-shadow:0 3px 6px #0002; }
+.reference-home .reference-contact>span { width:43px; height:43px; display:grid; place-items:center; border-radius:50%; color:#fff; background:#050805; }
+.reference-home .reference-toggle { display:none; }
+.reference-home .reference-auth { display:flex; align-items:center; gap:20px; }
+.reference-home .reference-login { color:white; font-weight:700; text-decoration:none; }
+.reference-home .is-scrolled .reference-login { color:#063d22; }
+.reference-home .reference-pill a { padding:10px 16px; }
+.reference-home .reference-nav { padding-inline:3%; }
+.marketplace-sections section[id], .marketplace-footer { scroll-margin-top:105px; }
+.marketplace-footer { background:#103a29; color:#e8f0e3; padding:40px max(24px,calc((100vw - 1280px)/2)); display:flex; justify-content:space-between; align-items:center; gap:24px; }
+.marketplace-footer strong { font-size:22px; color:white; }
+.marketplace-footer p { margin-top:8px; font-size:14px; }
+.marketplace-footer nav { display:flex; flex-wrap:wrap; gap:24px; }
+.marketplace-sections .tone-white { background:#f5f5f3; }
+.marketplace-sections .tone-green { background:#d0f447; border-color:#c1e83c; }
+.marketplace-sections .tone-green :is(h3,p,li,span,a) { color:#15220d; }
+.marketplace-sections .tone-green a:has(+ span), .marketplace-sections .tone-green a.bg-\[\#174B35\] { color:white; }
+.marketplace-sections .tone-green .border-t { border-color:#174b3526; }
+.marketplace-sections .tone-green h3 { color:#063d22; }
+.marketplace-sections .tone-card a:focus-visible { outline:3px solid #063d22; outline-offset:4px; }
+@media(max-width:1250px) {
+ .reference-home .reference-brand { font-size:20px; }
+ .reference-home .reference-pill a { font-size:13px; padding:10px 12px; }
+ .reference-home .reference-auth { gap:12px; }
+ .reference-home .reference-contact { font-size:15px; padding-left:18px; gap:10px; }
+}
+@media(max-width:1100px) {
+ .reference-home .reference-nav { padding:0 24px; gap:15px; }
+ .reference-home .reference-pill a { padding:10px 15px; font-size:14px; }
+ .reference-home .reference-contact { font-size:15px; padding-left:20px; gap:12px; }
+}
+@media(max-width:1050px) {
+ .reference-home .reference-nav { min-height:68px; padding:0 20px; }
+ .reference-home .reference-brand { font-size:21px; }
+ .reference-home .reference-toggle { display:flex; align-items:center; gap:12px; min-height:44px; padding:8px 16px; background:#063d22; color:white; border:0; border-radius:25px; cursor:pointer; }
+ .reference-home .reference-navigation { display:none; position:absolute; top:78px; left:16px; right:16px; padding:16px; background:#fff; border:1px solid #dce5db; border-radius:22px; box-shadow:0 12px 30px #0002; }
+ .reference-home .reference-navigation.is-open { display:flex; flex-direction:column; gap:14px; }
+ .reference-home .reference-pill { flex-direction:column; align-items:stretch; border-radius:16px; box-shadow:none; }
+ .reference-home .reference-pill a { padding:12px 16px; }
+ .reference-home .reference-contact { align-self:stretch; }
+ .reference-home .reference-auth { display:flex; padding:4px; justify-content:space-between; }
+ .reference-home .reference-login { color:#063d22; padding:10px 16px; }
+ .marketplace-footer { flex-direction:column; align-items:flex-start; }
+}
+@media(prefers-reduced-motion:reduce) { .reference-home .reference-header { transition:none; } }
+
+/* Compact navigation and a quieter rhythm across desktop and phone layouts. */
+.reference-home .reference-brand { display:inline-flex; align-items:center; gap:9px; }
+ .leaf-handshake { display:inline-flex; width:46px; height:38px; flex-shrink:0; }
+.leaf-handshake svg { display:block; width:100%; height:100%; overflow:visible; }
+.leaf-morph-stage { animation:leaf-morph-visibility 7s linear infinite; }
+.leaf-morph-veins { animation:leaf-vein-visibility 7s ease infinite; }
+.leaf-clasp-stage { opacity:0; transform-origin:32px 28px; animation:leaf-clasp-greeting 7s ease-in-out infinite; }
+@keyframes leaf-morph-visibility { 0%,43%,85%,100% {opacity:1} 52%,78% {opacity:0} }
+@keyframes leaf-vein-visibility { 0%,18%,96%,100% {opacity:1} 32%,87% {opacity:0} }
+@keyframes leaf-clasp-greeting {
+  0%,43%,86%,100% {opacity:0;transform:translateY(0) scale(.94)}
+  53%,78% {opacity:1;transform:translateY(0) scale(1)}
+  59%,69% {opacity:1;transform:translateY(-1px) rotate(-3deg)}
+  64%,74% {opacity:1;transform:translateY(1px) rotate(2deg)}
+}
+@media(max-width:1050px) { .leaf-handshake { width:37px; height:32px; } }
+@media(prefers-reduced-motion:reduce) {
+ .leaf-morph-stage,.leaf-morph-veins,.leaf-clasp-stage { animation:none; }
+ .leaf-morph-stage { display:none; }
+ .leaf-clasp-stage { opacity:1; }
+ .leaf-handshake animate { display:none; }
+}
+.reference-home .reference-nav { min-height:60px; max-width:1440px; gap:20px; }
+.reference-home .reference-brand { font-size:22px; letter-spacing:-.7px; }
+.reference-home .reference-pill { padding:4px; gap:2px; }
+.reference-home .reference-pill a { padding:9px 15px; font-size:14px; line-height:1.45; }
+.reference-home .reference-auth { gap:16px; }
+.reference-home .reference-login { font-size:14px; }
+.reference-home .reference-contact { padding:5px 6px 5px 18px; font-size:14px; gap:12px; }
+.reference-home .reference-contact>span { width:34px; height:34px; }
+@media(max-width:380px) {
+ .reference-home .reference-nav { padding-inline:14px; gap:10px; }
+ .reference-home .reference-brand { font-size:17px !important; }
+ .reference-home .reference-toggle { padding-inline:11px; }
+}
+.marketplace-footer { display:block; padding:48px max(24px,calc((100vw - 1200px)/2)) 20px; }
+.footer-grid { display:grid; grid-template-columns:1.6fr 1fr 1fr; gap:56px; }
+.marketplace-footer .footer-brand { color:white; font-size:21px; font-weight:800; letter-spacing:-.6px; }
+.footer-intro p { max-width:340px; line-height:1.75; color:#c1d2c8; }
+.marketplace-footer nav { display:flex; flex-direction:column; gap:10px; align-items:flex-start; font-size:13px; }
+.marketplace-footer nav h3 { color:white; font-size:14px; font-weight:700; margin-bottom:5px; }
+.marketplace-footer a:hover { color:#d0f447; }
+.marketplace-footer .footer-join { display:inline-block; margin-top:18px; padding:9px 15px; border-radius:999px; background:#d0f447; color:#103a29; font-size:13px; font-weight:700; }
+.footer-bottom { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid #ffffff20; padding-top:20px; margin-top:36px; font-size:12px; color:#bdcfc3; }
+.marketplace-sections h2 { text-wrap:balance; }
+@media(max-width:1050px) {
+ .reference-home .reference-nav { min-height:56px; }
+ .reference-home .reference-brand { font-size:19px; }
+ .reference-home .reference-toggle { padding:8px 14px; font-size:12px; }
+ .reference-home .reference-navigation { top:66px; max-height:calc(100svh - 82px); overflow-y:auto; }
+ .reference-home .reference-pill a { padding:12px 16px; }
+ .reference-home .reference-contact { min-height:44px; }
+}
+@media(max-width:640px) {
+ .marketplace-sections section { padding-top:44px; padding-bottom:44px; }
+ .marketplace-sections section:has(video) { padding-block:0; }
+ .marketplace-sections h2 { line-height:1.2; }
+ .marketplace-footer { padding:36px 22px 20px; }
+ .footer-grid { grid-template-columns:1fr 1fr; gap:30px 20px; }
+ .footer-intro { grid-column:1 / -1; }
+ .footer-bottom { margin-top:28px; }
+}
