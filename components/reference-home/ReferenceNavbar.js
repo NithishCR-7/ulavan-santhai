@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import LeafHandshake from "./LeafHandshake";
+import Image from "next/image";
 const links = [["home", "Home"], ["who-its-for", "Who it’s for"], ["how-it-works", "How it works"], ["plans", "Plans"], ["contact", "Contact Us"]];
 export default function ReferenceNavbar() {
   const [open, setOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function ReferenceNavbar() {
     return () => { window.removeEventListener("scroll", update); window.removeEventListener("keydown", escape); };
   }, []);
   return <header className={`reference-header${scrolled ? " is-scrolled" : ""}`}><nav className="reference-nav" aria-label="Main navigation">
-    <Link className="reference-brand" href="#home" onClick={() => setOpen(false)}><LeafHandshake /><span>ULAVAN SANTHAI</span></Link>
+    <Link className="reference-brand reference-gif-brand" href="#home" onClick={() => setOpen(false)} aria-label="Ulavan Mart — Home"><Image src="/images/ulavan-mart-animated.gif" alt="Ulavan Mart" width={719} height={234} unoptimized className="reference-brand-gif" /></Link>
     <button className="reference-toggle" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="reference-navigation" onClick={() => setOpen(!open)}>Menu <span aria-hidden="true">{open ? "×" : "☰"}</span></button>
     <div className={`reference-navigation${open ? " is-open" : ""}`} id="reference-navigation"><div className="reference-pill">
       {links.map(([id, label]) => <Link key={id} href={`#${id}`} className={active === id ? "is-active" : ""} aria-current={active === id ? "location" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}
