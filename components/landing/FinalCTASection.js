@@ -14,8 +14,25 @@ const getServerMotionSnapshot = () => true;
 
 export default function FinalCTASection() {
   const videoRef = useRef(null);
+  const ctaRef = useRef(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [ctaRevealed, setCtaRevealed] = useState(false);
   const prefersReducedMotion = useSyncExternalStore(subscribeMotion, getMotionSnapshot, getServerMotionSnapshot);
+
+  useEffect(() => {
+    if (!ctaRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setCtaRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12 }
+    );
+    observer.observe(ctaRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Harvesting video asset (local high-speed copy with Wikimedia Commons fallback)
   const videoLocal = "/harvester-rice-harvest.webm";
@@ -41,6 +58,7 @@ export default function FinalCTASection() {
       `}</style>
       <section
         id="final-cta"
+        ref={ctaRef}
         className="relative w-full overflow-hidden bg-[#001f2b] text-white m-0 border-none select-none"
         style={{
           borderRadius: "clamp(56px, 8vw, 150px) clamp(56px, 8vw, 150px) 0 0",
@@ -94,20 +112,42 @@ export default function FinalCTASection() {
         {/* Main Heading: Plus Jakarta Sans display typography */}
         <h2
           id="final-cta-heading"
-          className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-[1.2] font-display max-w-3xl drop-shadow-md"
+          className={`text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-[1.2] font-display max-w-3xl drop-shadow-md transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            ctaRevealed || prefersReducedMotion
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-7"
+          }`}
         >
           Be Part of a Growing <br className="hidden sm:inline" />
           Agricultural Community.
         </h2>
 
         {/* Supporting Description */}
-        <p className="mt-4 text-sm sm:text-base md:text-lg text-[#dce9e6] max-w-2xl leading-relaxed font-sans drop-shadow-xs">
+        <p
+          className={`mt-4 text-sm sm:text-base md:text-lg text-[#dce9e6] max-w-2xl leading-relaxed font-sans drop-shadow-xs transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            ctaRevealed || prefersReducedMotion
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+          style={{
+            transitionDelay: ctaRevealed && !prefersReducedMotion ? "200ms" : "0ms",
+          }}
+        >
           Join Ulavan Santhai and create new opportunities through agricultural
           connections.
         </p>
 
         {/* Action Buttons: Lime-green Primary + Outlined Secondary */}
-        <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto">
+        <div
+          className={`mt-6 sm:mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            ctaRevealed || prefersReducedMotion
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-6"
+          }`}
+          style={{
+            transitionDelay: ctaRevealed && !prefersReducedMotion ? "380ms" : "0ms",
+          }}
+        >
           {/* Lime-green Primary "Join Now" */}
           <Link
             href="/register"
@@ -132,7 +172,16 @@ export default function FinalCTASection() {
         </div>
 
         {/* Reassuring Subtext Note */}
-        <p className="mt-5 text-xs sm:text-sm text-[#a2bcb5] font-sans">
+        <p
+          className={`mt-5 text-xs sm:text-sm text-[#a2bcb5] font-sans transition-all duration-950 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            ctaRevealed || prefersReducedMotion
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-4"
+          }`}
+          style={{
+            transitionDelay: ctaRevealed && !prefersReducedMotion ? "520ms" : "0ms",
+          }}
+        >
           One account for buying, selling, or both.
         </p>
       </div>

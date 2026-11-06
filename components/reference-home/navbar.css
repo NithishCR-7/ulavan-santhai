@@ -111,6 +111,46 @@
 .marketplace-footer a:hover { color:#d0f447; }
 .marketplace-footer .footer-join { display:inline-block; margin-top:18px; padding:9px 15px; border-radius:999px; background:#d0f447; color:#103a29; font-size:13px; font-weight:700; }
 .footer-bottom { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid #ffffff20; padding-top:20px; margin-top:36px; font-size:12px; color:#bdcfc3; }
+
+/* Footer Scroll Reveal Sequence */
+.footer-intro,
+.marketplace-footer nav,
+.footer-bottom {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 1.05s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.05s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.footer-revealed .footer-intro {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.1s;
+}
+.footer-revealed nav:nth-of-type(1) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.26s;
+}
+.footer-revealed nav:nth-of-type(2) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.42s;
+}
+.footer-revealed .footer-bottom {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.58s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-intro,
+  .marketplace-footer nav,
+  .footer-bottom {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
 .marketplace-sections h2 { text-wrap:balance; }
 @media(max-width:1050px) {
  .reference-home .reference-nav { min-height:56px; }
@@ -128,4 +168,40 @@
  .footer-grid { grid-template-columns:1fr 1fr; gap:30px 20px; }
  .footer-intro { grid-column:1 / -1; }
  .footer-bottom { margin-top:28px; }
+}
+
+/* More prominent, readable typography throughout the underground story. */
+.reference-home .soil-story { padding-top:42px; padding-bottom:46px; gap:36px; }
+.reference-home .soil-title .eyebrow { font-size:11px; font-weight:800; letter-spacing:1.1px; }
+.reference-home .soil-title h2 { font-size:clamp(30px,3vw,42px); font-weight:750; line-height:1.13; }
+.reference-home .soil-title>p { font-size:14px; font-weight:650; line-height:1.75; max-width:300px; }
+.reference-home .soil-steps li>span { font-size:11px; font-weight:800; letter-spacing:.8px; }
+.reference-home .soil-steps h3 { font-size:clamp(19px,1.7vw,23px); font-weight:800; line-height:1.35; margin-top:18px; }
+.reference-home .soil-steps p { font-size:14px; font-weight:650; line-height:1.8; }
+@media(max-width:800px) {
+ .reference-home .soil-story { gap:20px; }
+ .reference-home .soil-title h2 { font-size:32px; }
+ .reference-home .soil-steps { gap:20px; }
+ .reference-home .soil-steps h3 { font-size:19px; }
+}
+@media(max-width:520px) {
+ .reference-home .soil-story { padding-top:30px; padding-bottom:36px; }
+ .reference-home .soil-title .eyebrow { font-size:10px; }
+ .reference-home .soil-title h2 { font-size:30px; }
+ .reference-home .soil-title>p,.reference-home .soil-steps p { font-size:13px; }
+ .reference-home .soil-steps li { grid-template-columns:1fr; gap:8px; padding-top:16px; }
+ .reference-home .soil-steps li>span { grid-row:auto; font-size:10px; }
+ .reference-home .soil-steps h3 { font-size:20px; margin:0; }
+}
+
+/* Slightly smaller story headings; keep the stronger weight and body copy. */
+.reference-home .soil-title h2 { font-size:clamp(27px,2.5vw,35px); }
+.reference-home .soil-steps h3 { font-size:clamp(17px,1.4vw,20px); }
+@media(max-width:800px) {
+ .reference-home .soil-title h2 { font-size:28px; }
+ .reference-home .soil-steps h3 { font-size:18px; }
+}
+@media(max-width:520px) {
+ .reference-home .soil-title h2 { font-size:27px; }
+ .reference-home .soil-steps h3 { font-size:18px; }
 }

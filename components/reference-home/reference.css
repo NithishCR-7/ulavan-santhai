@@ -14,4 +14,103 @@
 @media(min-width:1500px){.reference-home .grass-visual{height:1050px}.reference-home .grass-intro{height:745px}.reference-home .soil-story{min-height:305px}}
 @media(max-width:800px){.reference-home .nav{margin:12px 16px;min-height:60px}.reference-home .navlinks{top:76px;border-radius:16px;left:16px;right:16px;border:1px solid #dfe6d7;box-shadow:0 12px 25px #18391f12}.reference-home .grass-intro{height:650px;padding-top:135px}.reference-home .grass-intro h1{font-size:53px}.reference-home .grass-visual{height:1040px}.reference-home .grass-visual img{object-fit:cover;object-position:50% 100%}.reference-home .soil-story{grid-template-columns:1fr;gap:0;padding-top:30px;min-height:390px}.reference-home .soil-title h2{font-size:26px}.reference-home .soil-title h2 br{display:none}.reference-home .soil-title>p{max-width:none}.reference-home .soil-title .eyebrow{font-size:8px}.reference-home .soil-steps{padding-top:0;gap:20px}.reference-home .soil-steps h3{font-size:15px;margin-top:14px}.reference-home .soil-steps p{font-size:11px}}
 @media(max-width:520px){.reference-home .nav{padding:10px 16px;margin:12px}.reference-home .nav .brand{font-size:17px;letter-spacing:-.5px}.reference-home .nav .mark{width:29px;height:29px}.reference-home .menu{font-size:12px;border-radius:20px;background:transparent}.reference-home .grass-intro{height:640px;padding-top:131px}.reference-home .grass-intro h1{font-size:43px;letter-spacing:-1.8px;margin-top:22px}.reference-home .grass-intro .eyebrow{font-size:7px;letter-spacing:.8px;gap:6px}.reference-home .grass-intro .eyebrow:before{width:12px}.reference-home .grass-intro .lead{font-size:13px;max-width:330px}.reference-home .grass-intro .actions{gap:9px;margin-top:22px}.reference-home .grass-intro .btn{padding:11px 16px;font-size:11px;gap:10px}.reference-home .grass-scroll{margin-top:19px}.reference-home .grass-visual{height:1195px}.reference-home .grass-visual img{object-position:49% bottom}.reference-home .grass-visual:after{background:linear-gradient(#ffffffbf,#ffffff66 32%,transparent 45%,transparent 54%,#24180fe8 78%)}.reference-home .soil-story{min-height:555px;padding-top:25px;padding-bottom:30px;gap:12px}.reference-home .soil-title h2{font-size:28px;margin-top:13px}.reference-home .soil-title>p{font-size:11px}.reference-home .soil-steps{grid-template-columns:1fr;gap:14px}.reference-home .soil-steps li{padding-top:11px;display:grid;grid-template-columns:115px 1fr;gap:0 14px}.reference-home .soil-steps li>span{font-size:7px;grid-row:1/3;padding-top:3px}.reference-home .soil-steps h3{font-size:15px;margin:0 0 5px}.reference-home .soil-steps p{font-size:11px}.reference-home .soil-story:before{background:linear-gradient(transparent 0,#24180f 18%)}.reference-home .chapter#community{padding-top:50px}}
-@media(prefers-reduced-motion:reduce){.reference-home .grass-hero *{animation:none!important}}
+/* Hero On-Load Coordinated Reveal Animation */
+@keyframes heroTextReveal {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reference-home .grass-intro .eyebrow {
+  animation: heroTextReveal 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.1s;
+}
+.reference-home .grass-intro h1 {
+  animation: heroTextReveal 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.28s;
+}
+.reference-home .grass-intro .lead {
+  animation: heroTextReveal 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.46s;
+}
+.reference-home .grass-intro .actions {
+  animation: heroTextReveal 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.64s;
+}
+.reference-home .grass-scroll {
+  animation: heroTextReveal 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.82s;
+}
+
+/* Soil / Roots Section Scroll Reveal & Stagger */
+.reference-home .soil-title {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 1.05s cubic-bezier(0.16, 1, 0.3, 1), transform 1.05s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reference-home .soil-steps li {
+  position: relative;
+  border-top: none !important;
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 1.05s cubic-bezier(0.16, 1, 0.3, 1), transform 1.05s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reference-home .soil-steps li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: #bc9c6c70;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reference-home .soil-revealed .soil-title {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reference-home .soil-revealed .soil-steps li {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(1) {
+  transition-delay: 0.16s;
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(1)::before {
+  transform: scaleX(1);
+  transition-delay: 0.16s;
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(2) {
+  transition-delay: 0.34s;
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(2)::before {
+  transform: scaleX(1);
+  transition-delay: 0.34s;
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(3) {
+  transition-delay: 0.52s;
+}
+.reference-home .soil-revealed .soil-steps li:nth-child(3)::before {
+  transform: scaleX(1);
+  transition-delay: 0.52s;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .reference-home .grass-hero *,
+  .reference-home .soil-title,
+  .reference-home .soil-steps li,
+  .reference-home .soil-steps li::before {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
