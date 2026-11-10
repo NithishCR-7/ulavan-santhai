@@ -2,8 +2,26 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 export default function WhyChooseUsSection() {
+  const sectionRef = useRef(null);
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    if (!sectionRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.12 }
+    );
+    observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
   const features = [
     {
       number: "01",
@@ -114,11 +132,17 @@ export default function WhyChooseUsSection() {
   ];
 
   return (
-    <section className="py-14 sm:py-20 bg-[#F5F5EB] border-b border-gray-200/60">
+    <section ref={sectionRef} className="py-14 sm:py-20 bg-[#F5F5EB] border-b border-gray-200/60 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left Column: Real Agricultural Image (Indian Farmer in Lush Green Fields) */}
-          <div className="lg:col-span-5 relative">
+          {/* Left Column: Real Agricultural Image (Slide in from left side + scale 0.94 -> 1) */}
+          <div
+            className={`lg:col-span-5 relative transform transition-all duration-1050 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              revealed
+                ? "opacity-100 translate-x-0 scale-100"
+                : "opacity-0 -translate-x-8 sm:-translate-x-10 scale-[0.94]"
+            }`}
+          >
             <div className="relative mx-auto max-w-md lg:max-w-none">
               {/* Backing decorative frame */}
               <div className="absolute -top-4 -left-4 w-full h-full rounded-3xl bg-[#729B59]/20 -z-10" />
@@ -126,8 +150,8 @@ export default function WhyChooseUsSection() {
               {/* Main Photograph: Indian Farmer in Real Lush Green Agricultural Field */}
               <div className="rounded-3xl overflow-hidden shadow-xl border-4 border-white bg-white aspect-[4/5] relative group">
                 <Image
-                  src="/images/photographs/carrot-farmer.jpg"
-                  alt="Farmer harvesting carrots beside sacks of produce"
+                  src="/images/photographs/coconut-harvest-supplied.png"
+                  alt="Worker harvesting coconuts in a coconut plantation"
                   fill
                   sizes="(max-width: 1024px) 100vw, 40vw"
                   className="object-cover group-hover:scale-104 transition-transform duration-700 ease-out"
@@ -147,11 +171,14 @@ export default function WhyChooseUsSection() {
             </div>
           </div>
 
-          {/* Right Column: Section Heading & Five Feature Rows */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Small Introductory Label */}
-
-
+          {/* Right Column: Section Heading & Five Feature Rows (Slide in from right) */}
+          <div
+            className={`lg:col-span-7 space-y-6 transform transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              revealed
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-8 sm:translate-x-10"
+            }`}
+          >
             {/* Main Heading */}
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight">
               Bringing Agriculture <br className="hidden sm:inline" />
@@ -163,12 +190,21 @@ export default function WhyChooseUsSection() {
               A common marketplace designed to connect agricultural producers, suppliers and businesses.
             </p>
 
-            {/* Five Feature Rows Arranged Vertically */}
+            {/* Five Feature Rows Arranged Vertically with short stagger */}
             <div className="space-y-3.5 pt-2">
               {features.map((feat, index) => (
                 <div
                   key={feat.number}
-                  className={`tone-card p-5 rounded-2xl border border-[#E8F0E3] shadow-xs flex items-start gap-4 transition-all duration-200 group ${index % 2 ? "tone-green" : "tone-white"}`}
+                  className={`tone-card p-5 rounded-2xl border border-[#E8F0E3] shadow-xs flex items-start gap-4 transition-all duration-900 group ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                    index % 2 ? "tone-green" : "tone-white"
+                  } ${
+                    revealed
+                      ? "opacity-100 translate-y-0"
+                      : "opacity-0 translate-y-6"
+                  }`}
+                  style={{
+                    transitionDelay: revealed ? `${120 + index * 120}ms` : "0ms",
+                  }}
                 >
                   {/* Forest-Green Icon in Light-Green Container */}
                   <div className="w-9 h-9 rounded-xl bg-[#E8F0E3] text-[#174B35] group-hover:bg-[#174B35] group-hover:text-white transition-colors duration-200 flex items-center justify-center shrink-0 mt-0.5">
@@ -189,7 +225,12 @@ export default function WhyChooseUsSection() {
             </div>
 
             {/* CTA Button */}
-            <div className="pt-3">
+            <div
+              className={`pt-3 transform transition-all duration-950 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                revealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+              }`}
+              style={{ transitionDelay: revealed ? "750ms" : "0ms" }}
+            >
               <Link
                 href="/register"
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-sm sm:text-base shadow-md shadow-emerald-950/20 transition-all hover:scale-[1.01] active:scale-[0.99]"

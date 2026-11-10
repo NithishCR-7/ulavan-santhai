@@ -8,17 +8,25 @@ import "./audience.css";
 export default function AudienceSection() {
   const root = useRef(null);
   useEffect(() => {
+    if (!root.current) return;
     const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) if (entry.isIntersecting) { entry.target.classList.add("audience-seen"); observer.unobserve(entry.target); }
-    }, { threshold: 0.16 });
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("audience-seen");
+          observer.unobserve(entry.target);
+        }
+      }
+    }, { threshold: 0.12 });
+    const heading = root.current.querySelector(".audience-heading");
+    if (heading) observer.observe(heading);
     root.current.querySelectorAll(".audience-row").forEach(row => observer.observe(row));
     return () => observer.disconnect();
   }, []);
   const cards = [
-    { number:"01", title:"Farmers & Sellers", categoryBadge:"Producers & FPOs", description:"For farmers, growers and producer groups who want to introduce their harvest to interested buyers.", details:["Create a seller profile and submit verification details", "Add product photos, quantities and listing information", "Approved listings can receive buyer enquiries"], image:"/images/photographs/farmer-harvest.jpg", alt:"Farmer with freshly harvested vegetables", actionText:"Connect as Seller", link:"/register?role=SELLER" },
-    { number:"02", title:"Buyers & Traders", categoryBadge:"Commercial Buyers", description:"For individual buyers, retailers and traders looking for produce and dependable supplier connections.", details:["Browse agricultural categories after access approval", "Review supplier profiles and product information", "Ask sellers about quantity, quality and availability"], image:"/images/photographs/market-crates.jpg", alt:"Vegetables displayed in produce crates", actionText:"Connect as Buyer", link:"/register?role=BUYER" },
-    { number:"03", title:"Manufacturers & Processors", categoryBadge:"Agro Industries", description:"For food processors and manufacturers sourcing produce or ingredients for their operations.", details:["Discover raw materials and agricultural ingredients", "Discuss specifications and volumes with suppliers", "Add a seller role to showcase your own products"], image:"/images/photographs/produce-processing.jpg", alt:"Workers sorting sweet potatoes on a processing line", actionText:"Explore Sourcing", link:"/register?role=BUYER" },
-    { number:"04", title:"Wholesalers & Businesses", categoryBadge:"Bulk Distribution", description:"For wholesalers, distributors and businesses connecting with agricultural suppliers and customers.", details:["Explore produce for wholesale business needs", "Contact suppliers about bulk availability", "Buy, sell or do both using the same account"], image:"/images/photographs/produce-warehouse.jpg", alt:"Worker sorting fresh fruit in a produce warehouse", actionText:"Build Relationships", link:"/register?role=BOTH" },
+    { number:"01", title:"Farmers & Sellers", categoryBadge:"Producers & FPOs", description:"For farmers, growers and producer groups who want to introduce their harvest to interested buyers.", details:["Create a seller profile and submit verification details", "Add product photos, quantities and listing information", "Approved listings can receive buyer enquiries"], image:"/images/photographs/farmer-full-supplied.png", alt:"Farmer surrounded by vegetable baskets extending outside a circular frame", suppliedFrame:true, actionText:"Connect as Seller", link:"/register?role=SELLER" },
+    { number:"02", title:"Buyers & Traders", categoryBadge:"Commercial Buyers", description:"For individual buyers, retailers and traders looking for produce and dependable supplier connections.", details:["Browse agricultural categories after access approval", "Review supplier profiles and product information", "Ask sellers about quantity, quality and availability"], image:"/images/photographs/commercial-buyers-supplied.png", alt:"Agricultural processing, market and produce transport illustration", suppliedFrame:true, actionText:"Connect as Buyer", link:"/register?role=BUYER" },
+    { number:"03", title:"Manufacturers & Processors", categoryBadge:"Agro Industries", description:"For food processors and manufacturers sourcing produce or ingredients for their operations.", details:["Discover raw materials and agricultural ingredients", "Discuss specifications and volumes with suppliers", "Add a seller role to showcase your own products"], image:"/images/photographs/agro-factory-supplied.png", alt:"Tomato processing factory with workers, conveyor belts and packed products", suppliedFrame:true, embeddedCaption:true, actionText:"Explore Sourcing", link:"/register?role=BUYER" },
+    { number:"04", title:"Wholesalers & Businesses", categoryBadge:"Bulk Distribution", description:"For wholesalers, distributors and businesses connecting with agricultural suppliers and customers.", details:["Explore produce for wholesale business needs", "Contact suppliers about bulk availability", "Buy, sell or do both using the same account"], image:"/images/photographs/bulk-people-supplied.jpg", alt:"Wholesale distribution hub with people using a tablet and laptop outside the circular frame", suppliedFrame:true, embeddedCaption:true, actionText:"Build Relationships", link:"/register?role=BOTH" },
   ];
   return (
     <section ref={root} id="who-its-for" className="audience-section" aria-labelledby="audience-heading">
@@ -32,10 +40,10 @@ export default function AudienceSection() {
               <ul className="audience-details" aria-label={`${card.title} features`}>{card.details.map(detail => <li key={detail}><span aria-hidden="true">✓</span><span>{detail}</span></li>)}</ul>
               <Link href={card.link} className="audience-action">{card.actionText}<span aria-hidden="true">↗</span></Link>
             </div>
-            <div className="audience-art">
-              <div className="audience-orbit" aria-hidden="true" />
-              <div className="audience-circle"><Image src={card.image} alt={card.alt} fill sizes="(max-width: 600px) 80vw, (max-width: 1023px) 45vw, 440px" className="object-cover" /></div>
-              <span className="audience-photo-caption">{card.categoryBadge}</span>
+            <div className={`audience-art ${card.suppliedFrame ? "audience-supplied-art" : ""}`}>
+              {!card.suppliedFrame && <div className="audience-orbit" aria-hidden="true" />}
+              <div className={card.suppliedFrame ? "audience-supplied-image" : "audience-circle"}><Image src={card.image} alt={card.alt} fill style={{objectPosition:card.imagePosition || "center"}} sizes="(max-width: 600px) 80vw, (max-width: 1023px) 45vw, 440px" className={card.suppliedFrame ? "object-contain" : "object-cover"} /></div>
+              {!card.embeddedCaption && <span className="audience-photo-caption">{card.categoryBadge}</span>}
             </div>
           </article>)}
         </div>
