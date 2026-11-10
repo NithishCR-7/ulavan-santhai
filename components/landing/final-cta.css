@@ -1,0 +1,19 @@
+.marketplace-sections .final-join { width:100%; background:#001f2b; color:#fff; border-radius:0 clamp(64px,9vw,150px) 0 0; padding:76px 24px 70px; }
+.final-join-content { max-width:900px; margin:auto; text-align:center; }
+.final-join h2 { color:white; font-size:clamp(28px,3.5vw,46px); line-height:1.2; font-weight:800; letter-spacing:-1px; }
+.final-join-content>p { max-width:680px; margin:20px auto 0; font-size:17px; line-height:1.8; color:#dce9e6; }
+.final-join-actions { display:flex; justify-content:center; align-items:center; gap:18px; margin-top:30px; }
+.final-join-actions a { display:inline-flex; align-items:center; justify-content:center; gap:22px; min-height:48px; padding:12px 27px; border-radius:7px; font-size:15px; font-weight:750; transition:background .2s,transform .2s; }
+.final-join-primary { background:#c5f340; color:#10251b; }
+.final-join-primary:hover { background:#d4ff62; transform:translateY(-2px); }
+.final-join-login { color:white; border:1px solid #ffffff45; }
+.final-join-login:hover { background:#ffffff10; }
+.final-join-actions a:focus-visible { outline:3px solid #c5f340; outline-offset:5px; }
+.final-join-content>.final-join-note { font-size:12px; color:#a2bcb5; margin-top:24px; }
+@media(max-width:600px) {
+ .marketplace-sections .final-join { padding:52px 22px 44px; border-top-right-radius:64px; }
+ .final-join-content>p { font-size:14px; margin-top:16px; }
+ .final-join-actions { gap:12px; margin-top:24px; }
+ .final-join-actions a { padding:12px 22px; font-size:14px; }
+}
+@media(prefers-reduced-motion:reduce) { .final-join-actions a { transition:none; } .final-join-primary:hover { transform:none; } }

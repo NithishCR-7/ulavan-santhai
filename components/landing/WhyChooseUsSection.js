@@ -114,7 +114,7 @@ export default function WhyChooseUsSection() {
   ];
 
   return (
-    <section className="py-24 sm:py-32 bg-[#F5F5EB] border-b border-gray-200/60">
+    <section className="py-14 sm:py-20 bg-[#F5F5EB] border-b border-gray-200/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           {/* Left Column: Real Agricultural Image (Indian Farmer in Lush Green Fields) */}
@@ -126,8 +126,8 @@ export default function WhyChooseUsSection() {
               {/* Main Photograph: Indian Farmer in Real Lush Green Agricultural Field */}
               <div className="rounded-3xl overflow-hidden shadow-xl border-4 border-white bg-white aspect-[4/5] relative group">
                 <Image
-                  src="https://images.unsplash.com/photo-1605000797499-95a51c5269ae?auto=format&fit=crop&w=1200&q=80"
-                  alt="Indian farmer working in lush green agricultural field in natural sunlight"
+                  src="/images/photographs/carrot-farmer.jpg"
+                  alt="Farmer harvesting carrots beside sacks of produce"
                   fill
                   sizes="(max-width: 1024px) 100vw, 40vw"
                   className="object-cover group-hover:scale-104 transition-transform duration-700 ease-out"
@@ -150,13 +150,10 @@ export default function WhyChooseUsSection() {
           {/* Right Column: Section Heading & Five Feature Rows */}
           <div className="lg:col-span-7 space-y-6">
             {/* Small Introductory Label */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider border border-[#729B59]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#729B59]" />
-              <span>Platform Advantages</span>
-            </div>
+
 
             {/* Main Heading */}
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#174B35] tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight">
               Bringing Agriculture <br className="hidden sm:inline" />
               <span className="text-[#729B59]">Closer to Opportunity</span>
             </h2>
@@ -168,10 +165,10 @@ export default function WhyChooseUsSection() {
 
             {/* Five Feature Rows Arranged Vertically */}
             <div className="space-y-3.5 pt-2">
-              {features.map((feat) => (
+              {features.map((feat, index) => (
                 <div
                   key={feat.number}
-                  className="p-4 rounded-2xl bg-white border border-[#E8F0E3] shadow-xs flex items-start gap-4 hover:border-[#729B59]/40 hover:shadow-sm transition-all duration-200 group"
+                  className={`tone-card p-5 rounded-2xl border border-[#E8F0E3] shadow-xs flex items-start gap-4 transition-all duration-200 group ${index % 2 ? "tone-green" : "tone-white"}`}
                 >
                   {/* Forest-Green Icon in Light-Green Container */}
                   <div className="w-9 h-9 rounded-xl bg-[#E8F0E3] text-[#174B35] group-hover:bg-[#174B35] group-hover:text-white transition-colors duration-200 flex items-center justify-center shrink-0 mt-0.5">

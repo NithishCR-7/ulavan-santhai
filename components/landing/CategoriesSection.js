@@ -10,7 +10,7 @@ export default function CategoriesSection() {
       name: "Vegetables",
       description: "Fresh vegetables and farm produce.",
       image:
-        "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1000&q=80",
+        "/images/photographs/vegetables.jpg",
       alt: "Fresh vibrant vegetables and harvested farm produce",
       categoryTag: "Farm Fresh",
       link: "/register?category=Vegetables",
@@ -50,7 +50,7 @@ export default function CategoriesSection() {
       name: "Pulses",
       description: "Lentils, beans and legumes.",
       image:
-        "https://images.unsplash.com/photo-1515543237350-b3eea1ec8082?auto=format&fit=crop&w=1000&q=80",
+        "/images/photographs/lentils.jpg",
       alt: "Assorted raw agricultural pulses, lentils, and legumes",
       categoryTag: "Protein Crops",
       link: "/register?category=Pulses",
@@ -60,24 +60,21 @@ export default function CategoriesSection() {
       name: "Other Produce",
       description: "Explore more agricultural products.",
       image:
-        "https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=1000&q=80",
-      alt: "Fresh coconuts, sugarcane, and plantation crops",
+        "/images/photographs/coconuts.jpg",
+      alt: "Whole coconuts with natural brown husks",
       categoryTag: "Plantation & Cash",
       link: "/register?category=Other",
     },
   ];
 
   return (
-    <section id="categories" className="py-24 sm:py-32 bg-white border-b border-gray-100">
+    <section id="categories" className="py-14 sm:py-20 bg-white border-b border-gray-100 scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Heading & Introduction */}
-        <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-20">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider mb-4 border border-[#729B59]/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#729B59]" />
-            <span>Produce Categories</span>
-          </div>
+        <div className="max-w-3xl mx-auto text-center mb-9 sm:mb-12">
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#174B35] tracking-tight leading-tight">
+
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight">
             Explore Agricultural Categories
           </h2>
 
@@ -88,7 +85,7 @@ export default function CategoriesSection() {
 
         {/* Six Categories Editorial Grid (3 Columns on Desktop, 2 on Tablet, 1 on Mobile) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7 sm:gap-8">
-          {categories.map((cat) => (
+          {categories.map((cat, index) => (
             <Link
               key={cat.id}
               href={cat.link}
@@ -113,7 +110,7 @@ export default function CategoriesSection() {
               </div>
 
               {/* Card Body & Typography */}
-              <div className="p-6 flex flex-col flex-1 justify-between bg-white">
+              <div className={`tone-card tone-body p-6 flex flex-col flex-1 justify-between ${index % 2 ? "tone-green" : "tone-white"}`}>
                 <div>
                   <div className="flex items-center justify-between">
                     <h3 className="text-xl sm:text-2xl font-bold text-[#174B35] group-hover:text-[#729B59] transition-colors tracking-tight">

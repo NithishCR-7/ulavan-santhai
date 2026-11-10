@@ -1,6 +1,6 @@
 # Ulavan Santhai — Visual Media Sources & Licences
 
-All media assets in Ulavan Santhai are verified authentic, real-world agricultural photographs and videos from legitimate sources. No AI-generated images or synthetic farm visuals are used.
+Current replacement photography is documented in `photographs/SOURCES.md`. The sections below are historical source notes and do not establish provenance for every existing asset, including the supplied illustrated grass/roots hero.
 
 ## 1. Cinematic Agricultural Video Footage
 - **Hero Background Video / Tea Garden Aerial:**

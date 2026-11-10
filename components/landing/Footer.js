@@ -5,7 +5,7 @@ export default function Footer() {
   const currentYear = 2026;
 
   return (
-    <footer id="contact" className="bg-[#103A29] text-white border-t border-emerald-950/60">
+    <footer id="contact" className="bg-[#103A29] text-white border-t border-emerald-950/60 scroll-mt-28 sm:scroll-mt-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12">
           {/* Brand Info (2 cols) */}

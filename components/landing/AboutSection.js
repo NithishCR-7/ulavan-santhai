@@ -5,17 +5,14 @@ import Image from "next/image";
 
 export default function AboutSection() {
   return (
-    <section id="about" className="py-20 sm:py-28 bg-[#F5F5EB] border-b border-gray-200/60 overflow-hidden">
+    <section id="about" className="py-14 sm:py-20 bg-[#F5F5EB] border-b border-gray-200/60 overflow-hidden scroll-mt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
           {/* Left Column: Heading, Description & Key Value Pillars */}
           <div className="lg:col-span-6 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider border border-[#729B59]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#174B35]" />
-              <span>About Ulavan Santhai</span>
-            </div>
 
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#174B35] tracking-tight leading-tight">
+
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#174B35] tracking-tight leading-tight">
               Bringing the Agricultural <br className="hidden sm:inline" />
               <span className="text-[#729B59]">Community Together</span>
             </h2>
@@ -34,7 +31,7 @@ export default function AboutSection() {
 
             {/* Feature Highlights Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-white border border-[#E8F0E3] shadow-xs hover:border-[#729B59]/40 transition-colors">
+              <div className="tone-card tone-white p-6 rounded-2xl border border-[#E8F0E3] shadow-xs">
                 <div className="w-9 h-9 rounded-xl bg-[#E8F0E3] text-[#174B35] flex items-center justify-center font-bold mb-3">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -51,7 +48,7 @@ export default function AboutSection() {
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white border border-[#E8F0E3] shadow-xs hover:border-[#729B59]/40 transition-colors">
+              <div className="tone-card tone-green p-6 rounded-2xl border border-[#E8F0E3] shadow-xs">
                 <div className="w-9 h-9 rounded-xl bg-[#E8F0E3] text-[#174B35] flex items-center justify-center font-bold mb-3">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -92,8 +89,8 @@ export default function AboutSection() {
               {/* Main Image: Farming Community in Terraced Fields */}
               <div className="relative rounded-3xl overflow-hidden shadow-xl border-4 border-white bg-white group aspect-[16/10]">
                 <Image
-                  src="/images/about-farmers-community.jpg"
-                  alt="Agricultural farming community harvesting in lush terraced hillside fields"
+                  src="/images/photographs/carrot-farmer.jpg"
+                  alt="Farmer harvesting carrots and filling sacks in a field"
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"
@@ -115,8 +112,8 @@ export default function AboutSection() {
               {/* Overlapping Secondary Image: Farmer Harvesting Fresh Produce */}
               <div className="relative -mt-14 sm:-mt-16 ml-auto w-4/5 sm:w-3/4 rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-white group aspect-[16/10] z-10">
                 <Image
-                  src="/images/about-farmer-harvest.jpg"
-                  alt="Indian farmer harvesting fresh green coriander in rural fields"
+                  src="/images/photographs/farmer-harvest.jpg"
+                  alt="Farmer carrying a basket of freshly harvested vegetables"
                   fill
                   sizes="(max-width: 1024px) 80vw, 40vw"
                   className="object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"

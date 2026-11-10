@@ -1,183 +1,191 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("home");
+  const [isScrolled, setIsScrolled] = useState(false);
 
+  const navLinks = [
+    { id: "home", name: "Home", href: "/#hero" },
+    { id: "who-its-for", name: "Who it’s for", href: "/#who-its-for" },
+    { id: "how-it-works", name: "How it works", href: "/#how-it-works" },
+    { id: "plans", name: "Plans", href: "/#plans" },
+  ];
+
+  // Track scroll position for background state and active navigation item
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
+      const scrollY = window.scrollY;
+      setIsScrolled(scrollY > 50);
+
+      const scrollPos = scrollY + 220;
+      const sections = ["hero", "who-its-for", "how-it-works", "plans", "contact"];
+
+      for (const sectionId of sections) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPos >= top && scrollPos < top + height) {
+            setActiveSection(sectionId === "hero" ? "home" : sectionId);
+            break;
+          }
+        }
       }
     };
+
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: "Home", href: "#hero" },
-    { name: "Marketplace", href: "/marketplace" },
-    { name: "About", href: "#about" },
-    { name: "How It Works", href: "#how-it-works" },
-    { name: "Categories", href: "#categories" },
-    { name: "Contact", href: "#contact" },
-  ];
-
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
         isScrolled
-          ? "bg-white/95 backdrop-blur-md shadow-xs py-3 border-b border-gray-100"
-          : "bg-transparent py-4 sm:py-5"
+          ? "bg-white border-b border-neutral-200/80 shadow-xs"
+          : "bg-transparent border-b border-transparent shadow-none"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Brand Logo on the Left */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div
-            className={`w-12 h-12 sm:w-13 sm:h-13 rounded-2xl overflow-hidden flex items-center justify-center transition-all duration-300 relative shrink-0 shadow-md ${
-              isScrolled
-                ? "ring-2 ring-[#174B35]/25 bg-[#F5F5EB]"
-                : "ring-2 ring-white/80 bg-[#F5F5EB]"
-            }`}
+      {/* Main Navbar Bar: Preserves consistent dimensions & alignment across both states */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 flex items-center justify-between">
+        {/* 1. Left: Brand Text - Transitions from White (top) to Dark Green #06452C (scrolled) */}
+        <div className="flex items-center justify-start shrink-0">
+          <Link
+            href="/"
+            className="flex items-center gap-2 group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5F340] rounded-lg"
           >
-            <Image
-              src="/images/ulavan-santhai-emblem@2x.png"
-              alt="Ulavan Santhai Logo"
-              fill
-              sizes="(max-width: 640px) 48px, 52px"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              priority
-            />
-          </div>
-          <div className="flex flex-col">
             <span
-              className={`text-xl sm:text-2xl font-black tracking-tight leading-tight transition-colors duration-300 ${
-                isScrolled ? "text-[#174B35]" : "text-white drop-shadow-sm"
+              className={`text-base sm:text-xl lg:text-2xl font-black tracking-tight uppercase font-display whitespace-nowrap transition-colors duration-300 ${
+                isScrolled ? "text-[#06452C]" : "text-white drop-shadow-sm"
               }`}
             >
               Ulavan Santhai
             </span>
-            <span
-              className={`text-[10px] sm:text-[11px] tracking-wider uppercase font-bold transition-colors duration-300 ${
-                isScrolled ? "text-[#729B59]" : "text-[#E8F0E3] drop-shadow-xs"
-              }`}
-            >
-              Agricultural Marketplace
-            </span>
-          </div>
-        </Link>
-
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
-            <a
-              key={link.name}
-              href={link.href}
-              className={`text-sm font-medium tracking-normal transition-colors duration-200 hover:text-[#729B59] ${
-                isScrolled
-                  ? "text-[#263329]"
-                  : "text-white/90 hover:text-white drop-shadow-xs"
-              }`}
-            >
-              {link.name}
-            </a>
-          ))}
-        </nav>
-
-        {/* Right CTA Actions: Dashboard, Login & Register */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/dashboard"
-            className={`px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 ${
-              isScrolled
-                ? "text-[#174B35] hover:bg-[#E8F0E3]/60"
-                : "text-white/90 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/login"
-            className={`px-3.5 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 ${
-              isScrolled
-                ? "text-[#174B35] hover:bg-[#E8F0E3]/60"
-                : "text-white/95 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            className={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-200 shadow-xs hover:shadow active:scale-[0.98] ${
-              isScrolled
-                ? "bg-[#174B35] text-white hover:bg-[#103A29]"
-                : "bg-white text-[#174B35] hover:bg-[#F5F5EB]"
-            }`}
-          >
-            Register
           </Link>
         </div>
 
-        {/* Mobile Menu Hamburger */}
-        <div className="flex md:hidden items-center">
+        {/* 2. Center: Compact Dark Forest-Green Pill (#063D22) with Lime-Green Active Item (#C5F340) */}
+        <div className="hidden lg:flex items-center justify-center mx-4">
+          <nav
+            aria-label="Main Navigation"
+            className="h-[46px] inline-flex items-center bg-[#063D22] border border-[#063D22]/90 rounded-full p-1 shadow-md shadow-black/15"
+          >
+            {navLinks.map((link) => {
+              const isActive = activeSection === link.id;
+              return (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  onClick={() => setActiveSection(link.id)}
+                  className={`h-full inline-flex items-center justify-center px-5 rounded-full text-sm font-semibold transition-all duration-200 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5F340] ${
+                    isActive
+                      ? "bg-[#C5F340] text-[#15220D] shadow-xs font-bold"
+                      : "text-[#E8EDE5] hover:text-white hover:bg-white/5 font-medium"
+                  }`}
+                >
+                  {link.name}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* 3. Right: Desktop Lime-Green "Contact Us" Button + Mobile Compact Menu Button */}
+        <div className="flex items-center justify-end shrink-0">
+          {/* Desktop Contact Us Button */}
+          <Link
+            href="/#contact"
+            className="hidden lg:inline-flex h-[48px] items-center gap-3 pl-5 sm:pl-6 pr-2 rounded-full bg-[#C5F340] hover:bg-[#b8e833] text-[#15220D] text-sm sm:text-base font-bold shadow-md shadow-black/15 transition-all duration-200 group active:scale-95 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#06452C] shrink-0"
+          >
+            <span className="tracking-tight">Contact Us</span>
+
+            {/* Black circular badge with white diagonal arrow */}
+            <div className="w-[34px] h-[34px] rounded-full bg-[#050805] text-white flex items-center justify-center shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+              <svg
+                className="w-4 h-4 stroke-[2.5]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7 17L17 7M17 7H9M17 7V15"
+                />
+              </svg>
+            </div>
+          </Link>
+
+          {/* Mobile & Tablet Compact Menu Button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`p-2 rounded-xl transition-colors ${
-              isScrolled
-                ? "text-[#263329] hover:bg-gray-100"
-                : "text-white hover:bg-white/15"
-            }`}
-            aria-label="Toggle navigation menu"
+            className="lg:hidden h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-[#063D22] text-[#C5F340] hover:bg-[#C5F340] hover:text-[#15220D] border border-[#C5F340]/50 shadow-md shadow-black/20 flex items-center justify-center transition-all duration-200 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5F340] shrink-0 active:scale-95"
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             )}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile & Tablet Expandable Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white/98 backdrop-blur-xl border-b border-gray-200 shadow-xl px-5 pt-3 pb-6 mt-2 animate-in fade-in slide-in-from-top-3 duration-200">
-          <div className="flex flex-col space-y-3">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#263329] hover:text-[#174B35] font-semibold text-base py-2 border-b border-gray-50"
-              >
-                {link.name}
-              </a>
-            ))}
-            <div className="pt-4 flex flex-col gap-2.5">
+        <div className="lg:hidden max-w-7xl mx-auto px-4 sm:px-6 pb-4">
+          <div className="bg-[#063D22]/98 backdrop-blur-xl rounded-3xl border border-[#063D22]/80 shadow-2xl p-5 flex flex-col gap-2 animate-in fade-in slide-in-from-top-3 duration-200">
+            {navLinks.map((link) => {
+              const isActive = activeSection === link.id;
+              return (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  onClick={() => {
+                    setActiveSection(link.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className={`py-3 px-5 rounded-full text-sm font-semibold transition-colors ${
+                    isActive
+                      ? "bg-[#C5F340] text-[#15220D] font-bold"
+                      : "text-[#E8EDE5] hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {link.name}
+                </a>
+              );
+            })}
+
+            <div className="pt-3 mt-1 border-t border-white/10 flex flex-col gap-2.5">
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2.5 px-4 text-sm font-semibold text-[#174B35] border border-[#174B35]/30 rounded-xl hover:bg-[#E8F0E3]"
+                className="py-2.5 px-5 rounded-full text-center text-sm font-semibold text-[#E8EDE5] hover:text-white border border-white/20 hover:bg-white/10 transition-colors"
               >
-                Login
+                Sign in
               </Link>
               <Link
-                href="/register"
+                href="/#contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2.5 px-4 text-sm font-bold text-white bg-[#174B35] rounded-xl hover:bg-[#103A29] shadow-md shadow-emerald-950/20"
+                className="h-[48px] px-6 rounded-full bg-[#C5F340] hover:bg-[#b8e833] text-[#15220D] text-sm font-bold flex items-center justify-center gap-3 shadow-md shadow-black/20 transition-all duration-200"
               >
-                Register
+                <span>Contact Us</span>
+                <div className="w-[30px] h-[30px] rounded-full bg-[#050805] text-white flex items-center justify-center shrink-0">
+                  <svg className="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 17L17 7M17 7H9M17 7V15" />
+                  </svg>
+                </div>
               </Link>
             </div>
           </div>
