@@ -49,10 +49,16 @@ function getClientSnapshot() {
         activeRole: parsed.activeRole || (parsed.role ? parsed.role.toLowerCase() : "unassigned"),
         isPaid: parsed.isPaid ?? false,
         onboarded: parsed.onboarded ?? false,
+        buyerPaid: Boolean(parsed.buyerPaid || (parsed.buyerData && parsed.isPaid && (parsed.role === "Buyer" || parsed.activeRole === "buyer"))),
+        buyerOnboarded: Boolean(parsed.buyerOnboarded || (parsed.buyerData && (parsed.role === "Buyer" || parsed.activeRole === "buyer"))),
+        sellerPaid: Boolean(parsed.sellerPaid || (parsed.sellerData && parsed.isPaid && (parsed.role === "Seller" || parsed.activeRole === "seller"))),
+        sellerOnboarded: Boolean(parsed.sellerOnboarded || (parsed.sellerData && (parsed.role === "Seller" || parsed.activeRole === "seller"))),
         status: parsed.status || "active",
         buyerData: parsed.buyerData || null,
         sellerData: parsed.sellerData || null,
         payment: parsed.payment || null,
+        buyerPayment: parsed.buyerPayment || null,
+        sellerPayment: parsed.sellerPayment || null,
       });
       return cachedClientString;
     }

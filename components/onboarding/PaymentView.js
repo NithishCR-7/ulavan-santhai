@@ -163,27 +163,43 @@ export default function PaymentView({
       await submitRolePayment(checkoutData);
 
       if (typeof window !== "undefined") {
+        const isBuyer = currentRole === "buyer";
+        const stored =
+          sessionStorage.getItem("ulavan_user") ||
+          sessionStorage.getItem("ulavan_registered_user") ||
+          localStorage.getItem("ulavan_registered_user");
+        const existing = stored ? JSON.parse(stored) : (userAuth || {});
+
+        const paymentRecord = {
+          transactionId: txId,
+          gatewayReference: gwRef,
+          invoiceNumber: invNumber,
+          amount: totalAmount,
+          status: "SUCCESS",
+          paidAt: startDate,
+          planStartDate: startDate,
+          planEndDate: endDate.toISOString(),
+          renewalDueDate,
+          buyerViewLimit,
+          buyerViewed: 0,
+          buyerRemaining: buyerViewLimit,
+        };
+
         const updatedUser = {
-          ...userAuth,
+          ...existing,
           role: currentRole.charAt(0).toUpperCase() + currentRole.slice(1),
-          onboarded: true,
-          applicationId,
+          activeRole: currentRole,
           status: "active",
           isPaid: true,
-          payment: {
-            transactionId: txId,
-            gatewayReference: gwRef,
-            invoiceNumber: invNumber,
-            amount: totalAmount,
-            status: "SUCCESS",
-            paidAt: startDate,
-            planStartDate: startDate,
-            planEndDate: endDate.toISOString(),
-            renewalDueDate,
-            buyerViewLimit,
-            buyerViewed: 0,
-            buyerRemaining: buyerViewLimit,
-          },
+          buyerPaid: isBuyer ? true : Boolean(existing.buyerPaid),
+          buyerOnboarded: isBuyer ? true : Boolean(existing.buyerOnboarded),
+          buyerPayment: isBuyer ? paymentRecord : existing.buyerPayment,
+
+          sellerPaid: !isBuyer ? true : Boolean(existing.sellerPaid),
+          sellerOnboarded: !isBuyer ? true : Boolean(existing.sellerOnboarded),
+          sellerPayment: !isBuyer ? paymentRecord : existing.sellerPayment,
+
+          payment: paymentRecord,
         };
         sessionStorage.setItem("ulavan_user", JSON.stringify(updatedUser));
         sessionStorage.setItem("ulavan_registered_user", JSON.stringify(updatedUser));
@@ -349,12 +365,24 @@ export default function PaymentView({
               >
                 Print / Save Receipt
               </button>
-              <Link
-                href={`/dashboard?role=${currentRole}&paid=true`}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#204732] hover:bg-[#153423] text-white text-xs font-bold shadow-md transition-colors text-center"
-              >
-                Go to Dashboard &rarr;
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                <Link
+                  href="/get-started"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#204732]/30 text-[#204732] hover:bg-[#E8F0E3] text-xs font-bold transition-colors text-center"
+                >
+                  Role Switcher (Buyer / Seller)
+                </Link>
+                <Link
+                  href={
+                    (activeResult?.role?.toLowerCase().includes("buyer") || activeResult?.planName?.toLowerCase().includes("buyer"))
+                      ? "/marketplace"
+                      : "/seller/dashboard"
+                  }
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#204732] hover:bg-[#153423] text-white text-xs font-bold shadow-md transition-colors text-center"
+                >
+                  Go to {(activeResult?.role?.toLowerCase().includes("buyer") || activeResult?.planName?.toLowerCase().includes("buyer")) ? "Buyer Marketplace" : "Seller Dashboard"} &rarr;
+                </Link>
+              </div>
             </div>
           </div>
         ) : (

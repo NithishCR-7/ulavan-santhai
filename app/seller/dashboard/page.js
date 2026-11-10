@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import SellerHeader from "@/components/seller/SellerHeader";
 import SellerSidebar from "@/components/seller/SellerSidebar";
 import SellerMetricCard from "@/components/seller/SellerMetricCard";
@@ -11,11 +12,37 @@ import { getSellerDashboardData } from "@/services/sellerApi";
 import { useSessionUser } from "@/services/sessionAuth";
 
 export default function SellerDashboardPage() {
+  const router = useRouter();
   const sessionUser = useSessionUser();
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMockActive, setIsMockActive] = useState(false);
+
+  // Check if seller onboarding and membership payment has been completed
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored =
+        sessionStorage.getItem("ulavan_user") ||
+        sessionStorage.getItem("ulavan_registered_user") ||
+        localStorage.getItem("ulavan_registered_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const sellerDone = Boolean(
+          parsed.sellerPaid ||
+          parsed.sellerOnboarded ||
+          (parsed.sellerData && parsed.isPaid && (parsed.role === "Seller" || parsed.activeRole === "seller"))
+        );
+        if (!sellerDone) {
+          // If user has not completed seller onboarding, redirect to the 4-step onboarding
+          router.replace("/onboarding?role=seller&step=1");
+        }
+      }
+    } catch {
+      // Safe default
+    }
+  }, [router]);
 
   // Lazy initialization of role guard check
   const [isBuyerOnly] = useState(() => {

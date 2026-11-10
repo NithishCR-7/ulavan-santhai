@@ -63,9 +63,9 @@ function OnboardingContent() {
   const roleParam = (searchParams.get("role") || "buyer").toLowerCase();
   const [role, setRole] = useState(roleParam === "seller" ? "seller" : "buyer");
 
-  // Stepper: 1. Profile Details -> 2. Document Upload -> 3. Review & Submit
-  // (NOTE: Step 1 Account Information was removed as user already registered)
-  const [currentStep, setCurrentStep] = useState(1);
+  // Stepper: 1. Profile Details -> 2. Document Upload -> 3. Review & Submit -> 4. Payment
+  const stepParam = parseInt(searchParams.get("step") || "1", 10);
+  const [currentStep, setCurrentStep] = useState(stepParam >= 1 && stepParam <= 4 ? stepParam : 1);
 
   // Authenticated user from session (hydration-safe)
   const userAuth = useSessionUser();
@@ -490,33 +490,51 @@ function OnboardingContent() {
 
       await submitRolePayment(checkoutData);
 
-      // 3. Update session user state
+      // 3. Update session user state with role-specific independent completion flags
       if (typeof window !== "undefined") {
+        const stored =
+          sessionStorage.getItem("ulavan_user") ||
+          sessionStorage.getItem("ulavan_registered_user") ||
+          localStorage.getItem("ulavan_registered_user");
+        const existing = stored ? JSON.parse(stored) : (userAuth || {});
+
+        const isBuyer = role === "buyer";
+        const paymentRecord = {
+          transactionId: txId,
+          gatewayReference: gwRef,
+          invoiceNumber: invNumber,
+          amount: totalAmount,
+          status: "SUCCESS",
+          paidAt: startDate,
+          planStartDate: startDate,
+          planEndDate: endDate.toISOString(),
+          renewalDueDate,
+          buyerViewLimit,
+          buyerViewed: 0,
+          buyerRemaining: buyerViewLimit,
+        };
+
         const updatedUser = {
-          ...userAuth,
+          ...existing,
           role: role.charAt(0).toUpperCase() + role.slice(1),
-          subType: role === "buyer" ? buyerType : sellerType,
-          onboarded: true,
-          applicationId,
+          activeRole: role,
+          subType: isBuyer ? buyerType : sellerType,
           status: "active",
           isPaid: true,
-          buyerData: role === "buyer" ? { ...buyerData, buyerType } : undefined,
-          sellerData: role === "seller" ? { ...sellerData, sellerType } : undefined,
-          payment: {
-            transactionId: txId,
-            gatewayReference: gwRef,
-            invoiceNumber: invNumber,
-            amount: totalAmount,
-            status: "SUCCESS",
-            paidAt: startDate,
-            planStartDate: startDate,
-            planEndDate: endDate.toISOString(),
-            renewalDueDate,
-            buyerViewLimit,
-            buyerViewed: 0,
-            buyerRemaining: buyerViewLimit,
-          },
+          // Role-specific completion flags
+          buyerPaid: isBuyer ? true : Boolean(existing.buyerPaid),
+          buyerOnboarded: isBuyer ? true : Boolean(existing.buyerOnboarded),
+          buyerData: isBuyer ? { ...buyerData, buyerType } : existing.buyerData,
+          buyerPayment: isBuyer ? paymentRecord : existing.buyerPayment,
+
+          sellerPaid: !isBuyer ? true : Boolean(existing.sellerPaid),
+          sellerOnboarded: !isBuyer ? true : Boolean(existing.sellerOnboarded),
+          sellerData: !isBuyer ? { ...sellerData, sellerType } : existing.sellerData,
+          sellerPayment: !isBuyer ? paymentRecord : existing.sellerPayment,
+
+          payment: paymentRecord,
         };
+
         sessionStorage.setItem("ulavan_user", JSON.stringify(updatedUser));
         sessionStorage.setItem("ulavan_registered_user", JSON.stringify(updatedUser));
         localStorage.setItem("ulavan_registered_user", JSON.stringify(updatedUser));

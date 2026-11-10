@@ -13,15 +13,19 @@ export default function GetStartedPage() {
       ? sessionUser.name
       : "";
 
-  const isBuyerOnboarded =
-    sessionUser?.isPaid &&
-    (sessionUser?.buyerData !== null || sessionUser?.role?.toLowerCase() === "buyer");
+  const isBuyerOnboarded = Boolean(
+    sessionUser?.buyerPaid ||
+    sessionUser?.buyerOnboarded ||
+    (sessionUser?.buyerData && sessionUser?.isPaid && (sessionUser?.role === "Buyer" || sessionUser?.activeRole === "buyer"))
+  );
 
-  const isSellerOnboarded =
-    sessionUser?.isPaid &&
-    (sessionUser?.sellerData !== null || sessionUser?.role?.toLowerCase() === "seller");
+  const isSellerOnboarded = Boolean(
+    sessionUser?.sellerPaid ||
+    sessionUser?.sellerOnboarded ||
+    (sessionUser?.sellerData && sessionUser?.isPaid && (sessionUser?.role === "Seller" || sessionUser?.activeRole === "seller"))
+  );
 
-  const handleSelectRole = (role, forceOnboard = false) => {
+  const handleSelectRole = (role) => {
     try {
       const stored =
         sessionStorage.getItem("ulavan_user") ||
@@ -30,30 +34,39 @@ export default function GetStartedPage() {
       let currentUser = stored ? JSON.parse(stored) : {};
 
       const roleCapitalized = role === "buyer" ? "Buyer" : "Seller";
-      currentUser.role = roleCapitalized;
       currentUser.activeRole = role;
 
       sessionStorage.setItem("ulavan_user", JSON.stringify(currentUser));
       sessionStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
       localStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
 
-      const isRolePaid =
-        currentUser.isPaid &&
-        (role === "buyer"
-          ? currentUser.buyerData || currentUser.role === "Buyer"
-          : currentUser.sellerData || currentUser.role === "Seller");
+      const isBuyerDone = Boolean(
+        currentUser.buyerPaid ||
+        currentUser.buyerOnboarded ||
+        (currentUser.buyerData && currentUser.isPaid && (currentUser.role === "Buyer" || currentUser.activeRole === "buyer"))
+      );
 
-      if (isRolePaid && !forceOnboard) {
-        if (role === "seller") {
-          router.push("/seller/dashboard");
+      const isSellerDone = Boolean(
+        currentUser.sellerPaid ||
+        currentUser.sellerOnboarded ||
+        (currentUser.sellerData && currentUser.isPaid && (currentUser.role === "Seller" || currentUser.activeRole === "seller"))
+      );
+
+      if (role === "buyer") {
+        if (isBuyerDone) {
+          router.push("/marketplace");
         } else {
-          router.push("/dashboard?role=buyer");
+          router.push("/onboarding?role=buyer&step=1");
         }
       } else {
-        router.push(`/onboarding?role=${role}`);
+        if (isSellerDone) {
+          router.push("/seller/dashboard");
+        } else {
+          router.push("/onboarding?role=seller&step=1");
+        }
       }
     } catch {
-      router.push(`/onboarding?role=${role}`);
+      router.push(`/onboarding?role=${role}&step=1`);
     }
   };
 
@@ -72,8 +85,9 @@ export default function GetStartedPage() {
         "Connect directly with suppliers.",
       ],
       isOnboarded: isBuyerOnboarded,
-      buttonText: isBuyerOnboarded ? "Open Buyer Workspace" : "Continue as Buyer",
-      buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
+      popularBadge: isBuyerOnboarded ? "Active Plan" : "Step 1 to 4 Required",
+      buttonText: isBuyerOnboarded ? "Open Buyer Workspace" : "Complete Buyer Form (4 Steps)",
+      buttonBg: isBuyerOnboarded ? "bg-[#174B35] hover:bg-[#103A29] text-white" : "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
     },
     {
@@ -90,9 +104,9 @@ export default function GetStartedPage() {
         "Receive direct farm-gate payments.",
       ],
       isOnboarded: isSellerOnboarded,
-      popularBadge: isSellerOnboarded ? "Active Plan" : "Direct Farm Gate",
-      buttonText: isSellerOnboarded ? "Open Seller Workspace" : "Continue as Seller",
-      buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
+      popularBadge: isSellerOnboarded ? "Active Plan" : "Step 1 to 4 Required",
+      buttonText: isSellerOnboarded ? "Open Seller Workspace" : "Complete Seller Form (4 Steps)",
+      buttonBg: isSellerOnboarded ? "bg-[#174B35] hover:bg-[#103A29] text-white" : "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
     },
   ];

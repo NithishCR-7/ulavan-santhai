@@ -73,6 +73,42 @@ function DashboardContent() {
   const [contactsLeft, setContactsLeft] = useState(10);
   const [inquirySent, setInquirySent] = useState({});
 
+  // Role onboarding guard
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored =
+        sessionStorage.getItem("ulavan_user") ||
+        sessionStorage.getItem("ulavan_registered_user") ||
+        localStorage.getItem("ulavan_registered_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const targetRole = (queryRole || activeView || "buyer").toLowerCase();
+        if (targetRole === "buyer") {
+          const buyerDone = Boolean(
+            parsed.buyerPaid ||
+            parsed.buyerOnboarded ||
+            (parsed.buyerData && parsed.isPaid && (parsed.role === "Buyer" || parsed.activeRole === "buyer"))
+          );
+          if (!buyerDone) {
+            router.replace("/onboarding?role=buyer&step=1");
+          }
+        } else if (targetRole === "seller") {
+          const sellerDone = Boolean(
+            parsed.sellerPaid ||
+            parsed.sellerOnboarded ||
+            (parsed.sellerData && parsed.isPaid && (parsed.role === "Seller" || parsed.activeRole === "seller"))
+          );
+          if (!sellerDone) {
+            router.replace("/onboarding?role=seller&step=1");
+          }
+        }
+      }
+    } catch {
+      // Safe default
+    }
+  }, [queryRole, activeView, router]);
+
   // Payment modal state for unlisted sellers
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [payMethod, setPayMethod] = useState("UPI");

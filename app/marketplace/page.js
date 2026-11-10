@@ -84,6 +84,32 @@ function MarketplaceApp() {
   const [selectedProductForEnquiry, setSelectedProductForEnquiry] = useState(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // Guard: if registered user has not completed Buyer onboarding & payment, redirect to onboarding step 1
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored =
+        sessionStorage.getItem("ulavan_user") ||
+        sessionStorage.getItem("ulavan_registered_user") ||
+        localStorage.getItem("ulavan_registered_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.email || parsed.mobile || parsed.id) {
+          const buyerDone = Boolean(
+            parsed.buyerPaid ||
+            parsed.buyerOnboarded ||
+            (parsed.buyerData && parsed.isPaid && (parsed.role === "Buyer" || parsed.activeRole === "buyer"))
+          );
+          if (!buyerDone) {
+            router.replace("/onboarding?role=buyer&step=1");
+          }
+        }
+      }
+    } catch {
+      // safe fallback
+    }
+  }, [router]);
+
   // Load products on mount
   useEffect(() => {
     let isMounted = true;
