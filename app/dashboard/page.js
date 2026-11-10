@@ -320,12 +320,13 @@ function DashboardContent() {
                   </p>
                 </div>
 
-                <Link
-                  href="/onboarding/payment?role=seller&mode=add_second_role"
-                  className="px-6 py-3 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap self-start md:self-auto inline-flex items-center gap-1.5"
+                <button
+                  type="button"
+                  onClick={() => setIsPayModalOpen(true)}
+                  className="px-6 py-3 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer whitespace-nowrap self-start md:self-auto"
                 >
-                  <span>Pay ₹365 &amp; Make Profile Live &rarr;</span>
-                </Link>
+                  Pay ₹365 &amp; Make Profile Live →
+                </button>
               </div>
             ) : (
               <div className="p-4 sm:p-5 rounded-3xl bg-emerald-50 border border-emerald-300 shadow-xs flex items-center justify-between flex-wrap gap-3">
@@ -449,20 +450,7 @@ function DashboardContent() {
                   <h3 className="text-base sm:text-lg font-extrabold text-[#174B35]">Direct Farm Produce Marketplace</h3>
                   <p className="text-xs text-gray-500 mt-0.5">Contact certified producers directly for wholesale and retail procurement.</p>
                 </div>
-                <div className="flex items-center gap-2.5">
-                  <Link
-                    href="/buyer/enquiries"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F5F5EB] border border-gray-200 text-gray-700 hover:text-[#174B35] text-xs font-bold transition-colors"
-                  >
-                    <span>💬 My Enquiries</span>
-                  </Link>
-                  <Link
-                    href="/marketplace"
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors"
-                  >
-                    <span>Explore Products &rarr;</span>
-                  </Link>
-                </div>
+                <span className="text-xs font-semibold text-[#729B59]">5 Verified Lots Ready for Dispatch</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
