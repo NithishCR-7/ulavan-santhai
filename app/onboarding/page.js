@@ -11,6 +11,7 @@ import DocumentUploader from "@/components/onboarding/DocumentUploader";
 import { submitApplication } from "@/services/onboardingApi";
 import { submitRolePayment } from "@/services/paymentApi";
 import { useSessionUser } from "@/services/sessionAuth";
+import PaymentView from "@/components/onboarding/PaymentView";
 
 export const BUYER_TYPES = [
   "Individual",
@@ -564,6 +565,26 @@ function OnboardingContent() {
     role === "buyer"
       ? buyerType === "Food Processor" || buyerType === "Bakery or Food Business"
       : sellerType === "Ingredient Producer" || sellerType === "Value-Added Manufacturer" || sellerType === "Manufacturer";
+
+  if (currentStep === 4) {
+    return (
+      <PaymentView
+        role={role}
+        onRoleChange={(nextRole) => {
+          setRole(nextRole);
+          router.replace(`/onboarding?role=${nextRole}`);
+        }}
+        userAuth={userAuth}
+        onBack={() => {
+          setCurrentStep(3);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onFinalizePayment={handleFinalizePayment}
+        paymentResult={paymentResult}
+        isProcessingExternal={isProcessingPayment}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F5EB] flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-16">
@@ -2010,9 +2031,9 @@ function OnboardingContent() {
         )}
 
         {/* ======================================================== */}
-        {/* STEP 4: PAYMENT (₹365) - DEDICATED BUYER & SELLER VIEW   */}
+        {/* STEP 4: Handled directly via PaymentView component above */}
         {/* ======================================================== */}
-        {currentStep === 4 && (
+        {false && currentStep === 4 && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* If Payment Succeeded: Show Official Tax Receipt */}
             {paymentResult ? (

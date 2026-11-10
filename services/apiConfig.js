@@ -1,20 +1,28 @@
 /**
- * Ulavan Santhai - Centralized API Configuration & Request Helper
- * Connects to the backend API while safely falling back to structured mock data
- * when endpoints are still under development.
+ * Ulavan Santhai - Centralized Dynamic API Configuration & Request Helper
+ * Connects dynamically to the backend API configured in .env.local without hardcoded URLs.
+ * Bypasses cache memory with cache: 'no-store' on all requests.
  */
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// On the client side (browser), using relative "" allows Next.js rewrite proxy to handle CORS automatically.
+// On the server side, it falls back to BACKEND_URL or NEXT_PUBLIC_API_URL.
+export const API_BASE_URL =
+  typeof window !== "undefined"
+    ? ""
+    : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
 
 /**
- * Standard API request wrapper with JWT token injection and mock fallback
+ * Standard dynamic API request wrapper with JWT token injection and zero-cache guarantee
  * @param {string} endpoint - Relative path (e.g. '/api/v1/seller/dashboard')
  * @param {object} options - Fetch options (method, headers, body)
- * @param {any} mockFallback - Data to return if the backend endpoint is not yet online
+ * @param {any} mockFallback - Data to return if the backend endpoint is offline or not yet deployed
  */
 export async function apiFetch(endpoint, options = {}, mockFallback = null) {
   const headers = {
     "Content-Type": "application/json",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
     ...options.headers,
   };
 
@@ -33,10 +41,12 @@ export async function apiFetch(endpoint, options = {}, mockFallback = null) {
     const res = await fetch(targetUrl, {
       ...options,
       headers,
+      cache: "no-store",
     });
 
     if (res.ok) {
       const json = await res.json().catch(() => null);
+      console.info(`[UlavanSanthai API] Live backend response (200 OK) from ${endpoint}`);
       return {
         success: true,
         data: json?.data ?? json,
@@ -45,10 +55,10 @@ export async function apiFetch(endpoint, options = {}, mockFallback = null) {
       };
     }
 
-    // Backend endpoint not yet deployed (404 / 502 / 503)
+    // Backend endpoint offline or not yet implemented on server (404 / 502 / 503)
     if (res.status === 404 || res.status >= 502) {
-      console.info(
-        `[UlavanSanthai API] Route ${endpoint} returned ${res.status}. Active mock contract fallback.`
+      console.warn(
+        `[UlavanSanthai API] Route ${endpoint} returned HTTP ${res.status}. Falling back to contract data.`
       );
       return {
         success: true,
@@ -66,8 +76,8 @@ export async function apiFetch(endpoint, options = {}, mockFallback = null) {
       isMock: false,
     };
   } catch (networkError) {
-    console.info(
-      `[UlavanSanthai API] Network unreachable for ${endpoint}. Active mock contract fallback.`
+    console.warn(
+      `[UlavanSanthai API] Network unreachable for ${endpoint}. Error: ${networkError.message}`
     );
     return {
       success: true,
@@ -78,4 +88,3 @@ export async function apiFetch(endpoint, options = {}, mockFallback = null) {
     };
   }
 }
-

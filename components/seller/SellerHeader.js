@@ -215,6 +215,17 @@ export default function SellerHeader({
                     </svg>
                     <span>Settings</span>
                   </Link>
+
+                  <Link
+                    href="/get-started"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-[#174B35] bg-[#E8F0E3]/60 hover:bg-[#E8F0E3] transition-colors rounded-xl mx-2 my-1"
+                  >
+                    <svg className="w-4 h-4 text-[#174B35]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    <span>Switch Role (Buyer / Seller)</span>
+                  </Link>
                 </div>
 
                 <div className="pt-1 border-t border-gray-100">

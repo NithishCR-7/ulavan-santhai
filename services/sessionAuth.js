@@ -9,6 +9,11 @@ export const defaultSessionUser = {
   username: "ramesh_kumar",
   email: "ramesh@example.com",
   mobile: "9876543210",
+  role: "unassigned",
+  activeRole: "unassigned",
+  isPaid: false,
+  onboarded: false,
+  status: "active",
 };
 
 let cachedClientString = null;
@@ -35,10 +40,19 @@ function getClientSnapshot() {
     if (raw) {
       const parsed = JSON.parse(raw);
       cachedClientString = JSON.stringify({
+        id: parsed.id || parsed.userId || "",
         name: parsed.name || parsed.username || defaultSessionUser.name,
         username: parsed.username || defaultSessionUser.username,
         email: parsed.email || defaultSessionUser.email,
         mobile: parsed.mobile || defaultSessionUser.mobile,
+        role: parsed.role || "unassigned",
+        activeRole: parsed.activeRole || (parsed.role ? parsed.role.toLowerCase() : "unassigned"),
+        isPaid: parsed.isPaid ?? false,
+        onboarded: parsed.onboarded ?? false,
+        status: parsed.status || "active",
+        buyerData: parsed.buyerData || null,
+        sellerData: parsed.sellerData || null,
+        payment: parsed.payment || null,
       });
       return cachedClientString;
     }

@@ -1,28 +1,60 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import MarketplaceHeader from "@/components/marketplace/MarketplaceHeader";
+import { useRouter } from "next/navigation";
+import BuyerHeader from "@/components/marketplace/BuyerHeader";
+import BottomTabBar from "@/components/marketplace/BottomTabBar";
+import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
+import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
+import SupplierProfileModal from "@/components/marketplace/SupplierProfileModal";
+import BuyerProfileModal from "@/components/marketplace/BuyerProfileModal";
+import HelpModal from "@/components/marketplace/HelpModal";
 import {
   getBuyerEnquiries,
   replyToEnquiryAsBuyer,
+  updateEnquiryStatus,
 } from "@/services/enquiryApi";
 import { useSessionUser } from "@/services/sessionAuth";
+import { SELLER_DIRECTORY } from "@/data/marketplaceCatalog";
+import { getLocalBuyerAccessState } from "@/services/sellerAccessApi";
 
 export default function BuyerEnquiriesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+          Loading your commercial enquiries...
+        </div>
+      }
+    >
+      <BuyerEnquiriesContent />
+    </Suspense>
+  );
+}
+
+function BuyerEnquiriesContent() {
+  const router = useRouter();
   const sessionUser = useSessionUser();
 
   const [enquiries, setEnquiries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [activeTab, setActiveTab] = useState("All"); // "All" | "Sent" | "Seen" | "Responded" | "Closed"
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Conversation Modal State
+  // Detailed Modal State
   const [activeEnquiry, setActiveEnquiry] = useState(null);
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [replyError, setReplyError] = useState("");
+
+  // Modals state
+  const [selectedSupplierForModal, setSelectedSupplierForModal] = useState(null);
+  const [isSellerAccessOpen, setIsSellerAccessOpen] = useState(false);
+  const [isPostRequirementOpen, setIsPostRequirementOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,16 +69,17 @@ export default function BuyerEnquiriesPage() {
       } catch (err) {
         console.error("Failed to fetch buyer enquiries:", err);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
 
     loadEnquiries();
 
+    const handleEnquirySubmitted = () => loadEnquiries();
+    window.addEventListener("ulavan_enquiry_submitted", handleEnquirySubmitted);
     return () => {
       isMounted = false;
+      window.removeEventListener("ulavan_enquiry_submitted", handleEnquirySubmitted);
     };
   }, [sessionUser]);
 
@@ -57,421 +90,530 @@ export default function BuyerEnquiriesPage() {
       if (res.success && Array.isArray(res.data)) {
         setEnquiries(res.data);
       }
-    } catch (err) {
-      console.error("Failed to refresh buyer enquiries:", err);
-    }
+    } catch (err) {}
   };
 
-  // Filter enquiries
-  const filteredEnquiries = enquiries.filter((enq) => {
-    // Status tab filter
-    if (filterStatus === "NEW" && enq.status !== "NEW" && enq.status !== "VIEWED") return false;
-    if (filterStatus === "RESPONDED" && enq.status !== "RESPONDED") return false;
-    if (filterStatus === "CLOSED" && enq.status !== "CLOSED") return false;
+  // Status mapping:
+  // "NEW" -> "Sent"
+  // "VIEWED" -> "Seen"
+  // "RESPONDED" -> "Responded"
+  // "CLOSED" -> "Closed"
+  const getNormalizedStatus = (enq) => {
+    const s = (enq.status || "NEW").toUpperCase();
+    if (s === "NEW" || s === "SENT") return "Sent";
+    if (s === "VIEWED" || s === "SEEN") return "Seen";
+    if (s === "RESPONDED") return "Responded";
+    if (s === "CLOSED") return "Closed";
+    return "Sent";
+  };
 
-    // Search query
+  // Filter enquiries by Tab and Search
+  const filteredEnquiries = enquiries.filter((enq) => {
+    const norm = getNormalizedStatus(enq);
+    if (activeTab !== "All" && norm !== activeTab) return false;
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchTitle = (enq.productTitle || "").toLowerCase().includes(q);
+      const matchTitle = (enq.productTitle || enq.commodity || "").toLowerCase().includes(q);
       const matchSeller = (enq.sellerName || "").toLowerCase().includes(q);
-      const matchSubject = (enq.subject || "").toLowerCase().includes(q);
-      return matchTitle || matchSeller || matchSubject;
+      const matchId = (enq.id || "").toLowerCase().includes(q);
+      return matchTitle || matchSeller || matchId;
     }
-
     return true;
   });
 
-  // Handle buyer follow-up reply in conversation
+  // Reply handler
   const handleSendFollowUp = async (e) => {
     e.preventDefault();
     setReplyError("");
 
     if (!followUpMessage.trim()) {
-      setReplyError("Please enter a message.");
+      setReplyError("Please enter a message or negotiation note.");
       return;
     }
 
     setIsSendingReply(true);
     try {
       const res = await replyToEnquiryAsBuyer(activeEnquiry.id, {
-        buyerName: sessionUser?.name || "Registered Buyer",
+        buyerName: sessionUser?.businessName || sessionUser?.name || "Registered Buyer",
         message: followUpMessage.trim(),
       });
 
       if (res.success && res.data) {
         setActiveEnquiry(res.data);
         setFollowUpMessage("");
-        // Reload list
         refreshEnquiries();
       } else {
-        setReplyError(res.error || "Failed to send message. Please try again.");
+        setReplyError(res.error || "Failed to send message.");
       }
     } catch (err) {
-      console.error("Error sending follow-up:", err);
-      setReplyError("Network error. Please try again.");
+      setReplyError("Network error while sending reply.");
     } finally {
       setIsSendingReply(false);
     }
   };
 
-  // Status badge helper
-  const renderStatusBadge = (status) => {
-    switch (status) {
-      case "NEW":
+  // Close enquiry handler
+  const handleCloseEnquiry = async () => {
+    if (!activeEnquiry) return;
+    try {
+      const res = await updateEnquiryStatus(activeEnquiry.id, "CLOSED");
+      if (res.success && res.data) {
+        setActiveEnquiry(res.data);
+        refreshEnquiries();
+      }
+    } catch (e) {}
+  };
+
+  // Render Status Badge
+  const renderStatusBadge = (statusNorm) => {
+    switch (statusNorm) {
+      case "Sent":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            Sent to Producer
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Sent
           </span>
         );
-      case "VIEWED":
+      case "Seen":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            Viewed by Producer
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            Seen
           </span>
         );
-      case "RESPONDED":
+      case "Responded":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-            Producer Responded
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+            Responded
           </span>
         );
-      case "CLOSED":
+      case "Closed":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
             Closed
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">
-            {status}
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">
+            {statusNorm}
           </span>
         );
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white">
-      <MarketplaceHeader />
+    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
+      {/* 1. Header (Sticky 2-row header replacing sidebar) */}
+      <BuyerHeader
+        onSearch={(q, cat) => router.push(`/marketplace?search=${encodeURIComponent(q)}&category=${encodeURIComponent(cat || "")}`)}
+        onOpenPostRequirement={() => setIsPostRequirementOpen(true)}
+        onOpenSellerAccess={() => setIsSellerAccessOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex-1 space-y-6">
-        {/* Header Breadcrumb & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
-          <div>
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-              <Link href="/dashboard" className="text-[#174B35] font-bold hover:underline">
-                Buyer Dashboard
-              </Link>
-              <span>/</span>
-              <span className="text-gray-400">Enquiries</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-              My Purchase Enquiries
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              Track quotation responses and direct communications with agricultural producers.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/marketplace"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors"
-            >
-              <span>+ Explore More Crops</span>
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Title Bar & Search */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Link href="/marketplace" className="hover:text-[#174B35] font-semibold">
+              Marketplace
             </Link>
-          </div>
-        </div>
-
-        {/* Filter Tabs & Search Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { id: "ALL", label: "All Enquiries" },
-              { id: "NEW", label: "Awaiting Reply" },
-              { id: "RESPONDED", label: "Responded" },
-              { id: "CLOSED", label: "Closed" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setFilterStatus(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  filterStatus === tab.id
-                    ? "bg-[#174B35] text-white shadow-xs"
-                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <span>/</span>
+            <span className="text-gray-900 font-bold">My Enquiries</span>
           </div>
 
-          <div className="relative sm:w-72">
-            <input
-              type="text"
-              placeholder="Search by produce or seller..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-white border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
-            />
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-gray-400 pointer-events-none">
-              🔍
-            </span>
-          </div>
-        </div>
-
-        {/* Enquiry Listings */}
-        {isLoading ? (
-          <div className="py-20 text-center text-xs text-gray-400">
-            <div className="w-6 h-6 border-2 border-[#174B35]/30 border-t-[#174B35] rounded-full animate-spin mx-auto mb-2"></div>
-            Loading your enquiries...
-          </div>
-        ) : filteredEnquiries.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-gray-200/90 shadow-2xs space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#F5F5EB] text-[#174B35] flex items-center justify-center mx-auto text-2xl font-black">
-              💬
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-base font-bold text-gray-900">No Enquiries Found</h3>
-              <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                {searchQuery || filterStatus !== "ALL"
-                  ? "No enquiries match your search or filter. Try selecting 'All Enquiries'."
-                  : "You have not sent any purchase enquiries yet. Browse the marketplace and connect directly with verified farmers."}
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                My Enquiries &amp; Quotations Desk
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Track direct grower purchase enquiries, supplier responses, and wholesale contracts.
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsPostRequirementOpen(true)}
+              className="px-5 py-2.5 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-sm transition-all cursor-pointer self-start sm:self-center"
+            >
+              + Post New Requirement
+            </button>
+          </div>
+
+          {/* Search Box */}
+          <div className="pt-2">
+            <div className="relative max-w-md">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
+                🔍
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by commodity, supplier, or reference ID..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5 Exact Status Tabs: All, Sent, Seen, Responded, Closed */}
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
+          {["All", "Sent", "Seen", "Responded", "Closed"].map((tab) => {
+            const isActive = activeTab === tab;
+            const count =
+              tab === "All"
+                ? enquiries.length
+                : enquiries.filter((e) => getNormalizedStatus(e) === tab).length;
+
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                  isActive
+                    ? "bg-[#174B35] text-white shadow-xs"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                <span>{tab}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                    isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Enquiries Content Table / Cards */}
+        {isLoading ? (
+          <div className="p-12 text-center text-xs text-gray-500">Loading your enquiries...</div>
+        ) : filteredEnquiries.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 space-y-4 max-w-lg mx-auto">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
+              📨
+            </div>
             <div>
+              <h3 className="text-lg font-bold text-gray-900">
+                No enquiries found under {activeTab}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                Connect with verified Tamil Nadu producers by sending a direct enquiry on any listing.
+              </p>
+            </div>
+            <div className="pt-2">
               <Link
                 href="/marketplace"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs"
+                className="inline-flex px-6 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold hover:bg-[#103A29] shadow-sm transition-all"
               >
-                <span>Browse Agricultural Lots</span>
-                <span>&rarr;</span>
+                Browse Marketplace &rarr;
               </Link>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredEnquiries.map((enquiry) => {
-              const latestSellerReply = enquiry.messages
-                ?.slice()
-                .reverse()
-                .find((m) => m.senderRole === "SELLER");
+          /* Table of Enquiries (Desktop) / Cards (Mobile) */
+          <div className="bg-white rounded-3xl border border-gray-200/90 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[10px] font-extrabold">
+                    <th className="py-3.5 px-4">Reference</th>
+                    <th className="py-3.5 px-4">Product / Category</th>
+                    <th className="py-3.5 px-4">Supplier</th>
+                    <th className="py-3.5 px-4">Quantity</th>
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredEnquiries.map((enq) => {
+                    const statusNorm = getNormalizedStatus(enq);
+                    return (
+                      <tr key={enq.id} className="hover:bg-emerald-50/30 transition-colors">
+                        {/* 1. Reference */}
+                        <td className="py-3.5 px-4 font-mono font-bold text-gray-900 whitespace-nowrap">
+                          {enq.id}
+                        </td>
 
-              return (
-                <div
-                  key={enquiry.id}
-                  className="bg-white rounded-3xl p-5 sm:p-6 border border-gray-200/90 shadow-2xs hover:border-[#729B59]/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
-                >
-                  <div className="flex items-start gap-4 flex-1 min-w-0">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden relative shrink-0 border border-gray-200 bg-gray-50">
-                      <Image
-                        src={enquiry.productThumbnail || "/images/about-farmer-harvest.jpg"}
-                        alt={enquiry.productTitle}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                      />
-                    </div>
+                        {/* 2. Product / Category */}
+                        <td className="py-3.5 px-4 max-w-xs">
+                          <div className="font-bold text-gray-900 line-clamp-1">
+                            {enq.productTitle || enq.commodity || "Produce Lot"}
+                          </div>
+                          <div className="text-[11px] text-[#729B59] font-medium">
+                            {enq.productCategory || "Agricultural Products"}
+                          </div>
+                        </td>
 
-                    <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {renderStatusBadge(enquiry.status)}
-                        <span className="text-[11px] text-gray-400 font-semibold">
-                          Enquiry Ref: {enquiry.id}
-                        </span>
-                        <span>&bull;</span>
-                        <span className="text-[11px] text-gray-400 font-semibold">
-                          {enquiry.formattedDate}
-                        </span>
-                      </div>
+                        {/* 3. Supplier */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="font-semibold text-gray-900">
+                            {enq.sellerName || "Verified Producer"}
+                          </div>
+                          <div className="text-[11px] text-gray-500">
+                            {enq.sellerDistrict || "Tamil Nadu"}
+                          </div>
+                        </td>
 
-                      <h3 className="text-base sm:text-lg font-black text-gray-900 truncate">
-                        {enquiry.productTitle}
-                      </h3>
+                        {/* 4. Quantity */}
+                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-gray-900">
+                          {enq.requestedQuantity} {enq.unitRequested || enq.unit || "kg"}
+                        </td>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-medium">
-                        <span>Producer: <strong className="text-gray-800">{enquiry.sellerName}</strong></span>
-                        <span>&bull;</span>
-                        <span>Qty: <strong className="text-gray-900">{enquiry.requestedQuantity} {enquiry.unitRequested}</strong></span>
-                        <span>&bull;</span>
-                        <span>Location: {enquiry.sellerDistrict}</span>
-                      </div>
+                        {/* 5. Date */}
+                        <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap text-[11px]">
+                          {enq.formattedDate || new Date(enq.createdAt).toLocaleDateString("en-IN")}
+                        </td>
 
-                      {/* Initial Enquiry Subject & Message Preview */}
-                      <p className="text-xs text-gray-600 italic line-clamp-1 mt-1">
-                        &ldquo;{enquiry.messages?.[0]?.message || enquiry.subject}&rdquo;
-                      </p>
+                        {/* 6. Status */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {renderStatusBadge(statusNorm)}
+                        </td>
 
-                      {/* Latest Seller Response Preview if available */}
-                      {latestSellerReply && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-900 flex items-start gap-2">
-                          <span className="font-bold shrink-0">Producer Reply:</span>
-                          <span className="italic line-clamp-1 flex-1">
-                            &ldquo;{latestSellerReply.message}&rdquo;
-                          </span>
-                          {latestSellerReply.quotedPrice && (
-                            <span className="font-black text-[#174B35] shrink-0">
-                              Offered: ₹{latestSellerReply.quotedPrice}/{enquiry.unitRequested}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
-                    <button
-                      type="button"
-                      onClick={() => setActiveEnquiry(enquiry)}
-                      className="px-5 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>View Conversation</span>
-                      <span>({enquiry.messages?.length || 1}) &rarr;</span>
-                    </button>
-
-                    <Link
-                      href={`/marketplace/products/${enquiry.productId}`}
-                      className="text-[11px] font-bold text-gray-500 hover:text-[#174B35] hover:underline"
-                    >
-                      View Produce Page
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+                        {/* 7. Action */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setActiveEnquiry(enq)}
+                            className="px-3.5 py-1.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>
 
-      {/* Conversation History Modal */}
+      {/* Screen 10: Detailed Enquiry Modal */}
       {activeEnquiry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden relative shrink-0 border border-gray-200">
-                  <Image
-                    src={activeEnquiry.productThumbnail || "/images/about-farmer-harvest.jpg"}
-                    alt={activeEnquiry.productTitle}
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
+            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-xs font-bold text-[#174B35] bg-[#E8F0E3] px-2.5 py-0.5 rounded-full">
+                    {activeEnquiry.id}
+                  </span>
+                  {renderStatusBadge(getNormalizedStatus(activeEnquiry))}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black text-gray-900 leading-tight">
-                      {activeEnquiry.productTitle}
-                    </h3>
-                    {renderStatusBadge(activeEnquiry.status)}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Supplier: <strong>{activeEnquiry.sellerName}</strong> ({activeEnquiry.sellerDistrict})
-                  </p>
-                </div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">
+                  {activeEnquiry.productTitle || activeEnquiry.commodity}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Supplier: <strong>{activeEnquiry.sellerName}</strong> • {activeEnquiry.sellerDistrict}
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setActiveEnquiry(null);
-                  setFollowUpMessage("");
-                  setReplyError("");
-                }}
-                className="p-1 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                onClick={() => setActiveEnquiry(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            {/* Conversation Messages Thread (Scrollable) */}
-            <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
-              {activeEnquiry.messages?.map((msg, index) => {
-                const isBuyer = msg.senderRole === "BUYER";
-                return (
-                  <div
-                    key={msg.id || index}
-                    className={`flex flex-col ${isBuyer ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-center gap-2 text-[10px] text-gray-400 font-semibold mb-1">
-                      <span>{msg.senderName}</span>
-                      <span>&bull;</span>
-                      <span>{msg.formattedTime || "Today"}</span>
-                    </div>
-
-                    <div
-                      className={`max-w-[85%] rounded-2xl p-4 text-xs space-y-2 shadow-2xs ${
-                        isBuyer
-                          ? "bg-[#174B35] text-white rounded-br-xs"
-                          : "bg-[#F5F5EB] text-gray-900 border border-gray-200 rounded-bl-xs"
-                      }`}
-                    >
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-
-                      {/* Quoted Rate / Stock Highlights in Seller Message */}
-                      {msg.quotedPrice && (
-                        <div className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-900 text-xs font-bold space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Offered Rate:</span>
-                            <span className="text-[#174B35]">₹{msg.quotedPrice} / {activeEnquiry.unitRequested}</span>
-                          </div>
-                          {msg.availableQuantity && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-500">Ready Stock:</span>
-                              <span>{msg.availableQuantity}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Additional Requirements in Initial Message */}
-                      {msg.additionalRequirements && (
-                        <div className="pt-2 border-t border-white/20 text-[11px] opacity-90">
-                          Special Requirements: {msg.additionalRequirements}
-                        </div>
-                      )}
-                    </div>
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto py-5 space-y-5 pr-1 text-xs">
+              {/* Submitted Parameters Summary Grid */}
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+                <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                  Commercial Terms Submitted
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div>
+                    <span className="text-gray-500 block">Requested Volume</span>
+                    <strong className="text-gray-900">{activeEnquiry.requestedQuantity} {activeEnquiry.unitRequested || "kg"}</strong>
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <span className="text-gray-500 block">Quality Grade</span>
+                    <strong className="text-gray-900">{activeEnquiry.grade || "Grade A (Premium)"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Packaging</span>
+                    <strong className="text-gray-900">{activeEnquiry.packaging || "Standard Commercial Bags"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Delivery Destination</span>
+                    <strong className="text-gray-900">{activeEnquiry.deliveryLocation || "Tamil Nadu"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Needed-by Date</span>
+                    <strong className="text-gray-900">{activeEnquiry.neededByDate || "Standard Mandi Schedule"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block">Target Price</span>
+                    <strong className="text-gray-900">{activeEnquiry.targetPrice ? `₹${activeEnquiry.targetPrice}` : "Fair Mandi Rate"}</strong>
+                  </div>
+                </div>
 
-            {/* Reply / Follow-up Input */}
-            {activeEnquiry.status !== "CLOSED" ? (
-              <form onSubmit={handleSendFollowUp} className="pt-3 border-t border-gray-100 shrink-0 space-y-2">
-                {replyError && (
-                  <p className="text-xs text-red-600 font-semibold">{replyError}</p>
+                {activeEnquiry.additionalRequirements && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <span className="text-gray-500 block">Notes / Technical Requirements:</span>
+                    <p className="text-gray-700 italic mt-0.5">{activeEnquiry.additionalRequirements}</p>
+                  </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Type follow-up response or question to producer..."
+              </div>
+
+              {/* Message Thread History */}
+              <div className="space-y-3">
+                <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                  Conversation &amp; Supplier Response Thread
+                </h4>
+
+                <div className="space-y-2.5">
+                  {Array.isArray(activeEnquiry.messages) && activeEnquiry.messages.map((msg, idx) => {
+                    const isBuyerMsg = msg.senderRole === "BUYER";
+                    return (
+                      <div
+                        key={idx}
+                        className={`p-3.5 rounded-2xl border ${
+                          isBuyerMsg
+                            ? "bg-[#E8F0E3]/60 border-emerald-200 ml-4 sm:ml-8"
+                            : "bg-white border-gray-200 mr-4 sm:mr-8 shadow-xs"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-100/80 mb-1.5">
+                          <span className="font-bold text-gray-900">
+                            {isBuyerMsg ? "You (Buyer)" : msg.senderName || activeEnquiry.sellerName}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {msg.formattedTime || new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{msg.message}</p>
+                        {msg.quotedPrice && (
+                          <div className="mt-2 p-2 bg-emerald-100/70 rounded-lg text-[11px] font-bold text-[#174B35]">
+                            Quoted Mandi Price: ₹{msg.quotedPrice} per {msg.unit || "kg"}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reply Box (if not closed) */}
+              {activeEnquiry.status !== "CLOSED" ? (
+                <form onSubmit={handleSendFollowUp} className="space-y-2.5 pt-2 border-t border-gray-100">
+                  <label className="block text-xs font-bold text-gray-800">
+                    Send Reply / Counter-Offer to Supplier:
+                  </label>
+                  {replyError && (
+                    <div className="text-xs text-red-600 font-semibold">{replyError}</div>
+                  )}
+                  <textarea
+                    rows={2}
                     value={followUpMessage}
                     onChange={(e) => setFollowUpMessage(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
+                    placeholder="Type your message, confirm delivery dates, or ask for transport terms..."
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
                   />
-                  <button
-                    type="submit"
-                    disabled={isSendingReply}
-                    className="px-5 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                  >
-                    {isSendingReply ? "Sending..." : "Send Reply"}
-                  </button>
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleCloseEnquiry}
+                      className="text-xs text-gray-500 hover:text-red-600 hover:underline cursor-pointer"
+                    >
+                      Mark as Closed
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSendingReply}
+                      className="px-5 py-2 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isSendingReply ? "Sending..." : "Send Message"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-xl text-center text-gray-500 text-xs font-medium">
+                  This enquiry thread has been marked as closed.
                 </div>
-              </form>
-            ) : (
-              <div className="pt-3 border-t border-gray-100 text-center text-xs text-gray-400">
-                This enquiry is closed. Start a new enquiry from the product page if needed.
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  const sup = SELLER_DIRECTORY.find((s) => s.id === activeEnquiry.sellerId || s.name === activeEnquiry.sellerName);
+                  setSelectedSupplierForModal(
+                    sup || {
+                      id: activeEnquiry.sellerId,
+                      name: activeEnquiry.sellerName,
+                      district: activeEnquiry.sellerDistrict,
+                      sellerType: "Verified Producer",
+                      verified: true,
+                    }
+                  );
+                }}
+                className="text-xs font-bold text-[#174B35] hover:underline cursor-pointer"
+              >
+                View Supplier Contact &rarr;
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveEnquiry(null)}
+                className="px-5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Tab Bar */}
+      <BottomTabBar />
+
+      {/* Modals */}
+      <SupplierProfileModal
+        isOpen={!!selectedSupplierForModal}
+        supplier={selectedSupplierForModal}
+        onClose={() => setSelectedSupplierForModal(null)}
+      />
+
+      <SellerAccessModal
+        isOpen={isSellerAccessOpen}
+        onClose={() => setIsSellerAccessOpen(false)}
+      />
+
+      <PostRequirementModal
+        isOpen={isPostRequirementOpen}
+        onClose={() => setIsPostRequirementOpen(false)}
+      />
+
+      <BuyerProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
     </div>
   );
 }

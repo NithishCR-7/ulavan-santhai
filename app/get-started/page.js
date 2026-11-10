@@ -8,17 +8,61 @@ import { useSessionUser } from "@/services/sessionAuth";
 export default function GetStartedPage() {
   const router = useRouter();
   const sessionUser = useSessionUser();
-  const userName = sessionUser?.name && sessionUser.name !== "Farmer Ramesh Kumar" ? sessionUser.name : "";
+  const userName =
+    sessionUser?.name && sessionUser.name !== "Farmer Ramesh Kumar"
+      ? sessionUser.name
+      : "";
 
-  const handleSelectRole = (role) => {
-    router.push(`/onboarding?role=${role}`);
+  const isBuyerOnboarded =
+    sessionUser?.isPaid &&
+    (sessionUser?.buyerData !== null || sessionUser?.role?.toLowerCase() === "buyer");
+
+  const isSellerOnboarded =
+    sessionUser?.isPaid &&
+    (sessionUser?.sellerData !== null || sessionUser?.role?.toLowerCase() === "seller");
+
+  const handleSelectRole = (role, forceOnboard = false) => {
+    try {
+      const stored =
+        sessionStorage.getItem("ulavan_user") ||
+        sessionStorage.getItem("ulavan_registered_user") ||
+        localStorage.getItem("ulavan_registered_user");
+      let currentUser = stored ? JSON.parse(stored) : {};
+
+      const roleCapitalized = role === "buyer" ? "Buyer" : "Seller";
+      currentUser.role = roleCapitalized;
+      currentUser.activeRole = role;
+
+      sessionStorage.setItem("ulavan_user", JSON.stringify(currentUser));
+      sessionStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
+      localStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
+
+      const isRolePaid =
+        currentUser.isPaid &&
+        (role === "buyer"
+          ? currentUser.buyerData || currentUser.role === "Buyer"
+          : currentUser.sellerData || currentUser.role === "Seller");
+
+      if (isRolePaid && !forceOnboard) {
+        if (role === "seller") {
+          router.push("/seller/dashboard");
+        } else {
+          router.push("/dashboard?role=buyer");
+        }
+      } else {
+        router.push(`/onboarding?role=${role}`);
+      }
+    } catch {
+      router.push(`/onboarding?role=${role}`);
+    }
   };
 
   const cards = [
     {
       role: "buyer",
       title: "Buyer",
-      tagline: "For commercial traders, retailers, restaurants, food processors, and wholesale buyers.",
+      tagline:
+        "For commercial traders, retailers, restaurants, food processors, and wholesale buyers.",
       badge: "Sourcing & Procurement",
       image: "/images/get-started/buyer-wholesale.jpg",
       alt: "Wholesale APMC agriculture mandi with buyers inspecting crates of fresh produce",
@@ -27,14 +71,16 @@ export default function GetStartedPage() {
         "Discover direct farm producers.",
         "Connect directly with suppliers.",
       ],
-      buttonText: "Continue as Buyer",
+      isOnboarded: isBuyerOnboarded,
+      buttonText: isBuyerOnboarded ? "Open Buyer Workspace" : "Continue as Buyer",
       buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
     },
     {
       role: "seller",
       title: "Seller",
-      tagline: "For farmers, FPOs, organic producers, plantation growers, and agri-processors.",
+      tagline:
+        "For farmers, FPOs, organic producers, plantation growers, and agri-processors.",
       badge: "Producers & Farmers",
       image: "/images/get-started/seller-farmer.jpg",
       alt: "Smiling Indian farmer in paddy field holding freshly harvested crops",
@@ -43,10 +89,11 @@ export default function GetStartedPage() {
         "Connect directly with bulk verified buyers.",
         "Receive direct farm-gate payments.",
       ],
-      buttonText: "Continue as Seller",
+      isOnboarded: isSellerOnboarded,
+      popularBadge: isSellerOnboarded ? "Active Plan" : "Direct Farm Gate",
+      buttonText: isSellerOnboarded ? "Open Seller Workspace" : "Continue as Seller",
       buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
-      popularBadge: "Direct Farm Gate",
     },
   ];
 
@@ -80,9 +127,14 @@ export default function GetStartedPage() {
           {/* Quick Links */}
           <div className="flex items-center gap-4">
             {userName ? (
-              <div suppressHydrationWarning className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200">
+              <div
+                suppressHydrationWarning
+                className="hidden sm:flex items-center gap-2 text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200"
+              >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Signed in as: <strong className="text-[#174B35]">{userName}</strong></span>
+                <span>
+                  Signed in as: <strong className="text-[#174B35]">{userName}</strong>
+                </span>
               </div>
             ) : (
               <span className="hidden sm:inline text-xs text-gray-500 font-medium">
@@ -107,11 +159,14 @@ export default function GetStartedPage() {
             <span className="w-2 h-2 rounded-full bg-[#729B59]" />
             <span>Step 2: Choose Your Marketplace Role</span>
           </div>
-          <h1 suppressHydrationWarning className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#174B35] tracking-tight leading-tight">
-            {userName ? `Welcome, ${userName}!` : "Find Your Place in Ulavan Santhai"}
+          <h1
+            suppressHydrationWarning
+            className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#174B35] tracking-tight leading-tight"
+          >
+            {userName ? `Welcome back, ${userName}!` : "Choose Your Marketplace Role"}
           </h1>
           <p className="mt-3 text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto">
-            Select your role below to complete your tailored profile and start trading with zero middleman margin.
+            Switch between your Buyer and Seller workspaces anytime, or complete your tailored profile to start trading with zero middleman margin.
           </p>
         </div>
 
@@ -123,14 +178,21 @@ export default function GetStartedPage() {
               onClick={() => handleSelectRole(card.role)}
               className={`group bg-white rounded-3xl overflow-hidden border-2 border-gray-200/90 shadow-sm hover:shadow-2xl ${card.borderAccent} transition-all duration-300 flex flex-col cursor-pointer hover:-translate-y-1.5 relative`}
             >
-              {/* Optional Popular/Badge */}
-              {card.popularBadge && (
+              {/* Active Plan / Popular Badge */}
+              {card.isOnboarded ? (
+                <div className="absolute top-4 right-4 z-20">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-md tracking-wide">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    Verified Plan Active
+                  </span>
+                </div>
+              ) : card.popularBadge ? (
                 <div className="absolute top-4 right-4 z-20">
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#174B35] text-white text-[11px] font-bold shadow-md tracking-wide">
                     {card.popularBadge}
                   </span>
                 </div>
-              )}
+              ) : null}
 
               {/* Large Image Header */}
               <div className="relative aspect-[16/11] w-full overflow-hidden bg-gray-100">
@@ -148,7 +210,9 @@ export default function GetStartedPage() {
                     {card.badge}
                   </span>
                   <div className="flex items-baseline justify-between mt-0.5">
-                    <h3 className="text-2xl sm:text-3xl font-black tracking-tight">{card.title}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-black tracking-tight">
+                      {card.title}
+                    </h3>
                   </div>
                 </div>
               </div>
@@ -164,8 +228,18 @@ export default function GetStartedPage() {
                     {card.benefits.map((benefit, idx) => (
                       <div key={idx} className="flex items-start gap-2.5">
                         <div className="w-5 h-5 rounded-full bg-[#E8F0E3] text-[#174B35] flex items-center justify-center shrink-0 mt-0.5">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                         </div>
                         <span className="text-xs sm:text-sm font-semibold text-gray-800 leading-snug">
@@ -176,8 +250,8 @@ export default function GetStartedPage() {
                   </div>
                 </div>
 
-                {/* Action Button */}
-                <div className="pt-2">
+                {/* Action Buttons */}
+                <div className="pt-2 space-y-2">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -187,10 +261,33 @@ export default function GetStartedPage() {
                     className={`w-full py-3.5 px-5 rounded-2xl font-bold text-sm transition-all duration-200 shadow-sm group-hover:shadow-md flex items-center justify-center gap-2 cursor-pointer ${card.buttonBg}`}
                   >
                     <span>{card.buttonText}</span>
-                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    <svg
+                      className="w-4 h-4 group-hover:translate-x-1 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                      />
                     </svg>
                   </button>
+
+                  {card.isOnboarded && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectRole(card.role, true);
+                      }}
+                      className="w-full text-center text-xs font-semibold text-gray-500 hover:text-[#174B35] py-1 cursor-pointer hover:underline transition-colors"
+                    >
+                      Edit {card.title} Details / Re-fill Form
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

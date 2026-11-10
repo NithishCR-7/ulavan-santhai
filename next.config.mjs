@@ -28,10 +28,15 @@ const nextConfig = {
     ],
   },
   async rewrites() {
+    const backendBase = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+    if (!backendBase) {
+      return [];
+    }
+    const cleanUrl = backendBase.trim().replace(/\/+$/, "");
     return [
       {
         source: "/api/:path*",
-        destination: "http://192.168.1.42:5000/api/:path*",
+        destination: `${cleanUrl}/api/:path*`,
       },
     ];
   },

@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/set-env-ip.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "set-ip": "node scripts/set-env-ip.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

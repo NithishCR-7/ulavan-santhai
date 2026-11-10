@@ -124,17 +124,9 @@ function LoginContent() {
       }
 
       // Check where user should be directed:
-      // If newly registered or role not yet selected & completed: go to /get-started
-      // If user already completed onboarding: go to /dashboard
-      const role = userData?.role?.toLowerCase();
-      const isOnboarded = userData?.onboarded === true;
-      let targetRoute = "/get-started";
-
-      if (isOnboarded && (role === "buyer" || role === "seller")) {
-        targetRoute = `/dashboard?role=${role}`;
-      } else {
-        targetRoute = "/get-started";
-      }
+      // Always direct user to role selection / switching screen (/get-started)
+      // so they can choose or switch between Buyer and Seller anytime (even after payment)
+      const targetRoute = "/get-started";
 
       // Save user session
       try {
@@ -154,9 +146,7 @@ function LoginContent() {
         isOpen: true,
         type: "success",
         title: "Welcome Back",
-        message: targetRoute === "/get-started"
-          ? "Login successful! Continuing to role selection..."
-          : "Login successful! Opening your marketplace dashboard...",
+        message: "Login successful! Continuing to role selection...",
         targetUrl: targetRoute,
       });
 

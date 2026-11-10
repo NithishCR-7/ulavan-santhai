@@ -239,62 +239,59 @@ function DashboardContent() {
         <div className="bg-white rounded-2xl p-2 sm:p-2.5 shadow-2xs border border-gray-200 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-2">Dashboard Mode:</span>
-            {isDualRole ? (
-              <div className="inline-flex p-1 bg-[#F5F5EB] rounded-xl border border-[#729B59]/30 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveView("buyer")}
-                  className={`py-2 px-4 rounded-lg font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeView === "buyer"
-                      ? "bg-[#174B35] text-white shadow-xs"
-                      : "text-[#174B35] hover:bg-white/60"
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <span>Buyer View</span>
-                </button>
+            <div className="inline-flex p-1 bg-[#F5F5EB] rounded-xl border border-[#729B59]/30 gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveView("buyer");
+                  router.replace("/dashboard?role=buyer");
+                }}
+                className={`py-2 px-4 rounded-lg font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeView === "buyer"
+                    ? "bg-[#174B35] text-white shadow-xs"
+                    : "text-[#174B35] hover:bg-white/60"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span>Buyer View</span>
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveView("seller")}
-                  className={`py-2 px-4 rounded-lg font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
-                    activeView === "seller"
-                      ? "bg-[#174B35] text-white shadow-xs"
-                      : "text-[#174B35] hover:bg-white/60"
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18m0-18c4 0 7 3 7 7 0 5-7 11-7 11S5 15 5 10c0-4 3-7 7-7z" />
-                  </svg>
-                  <span>Seller View</span>
-                </button>
-              </div>
-            ) : (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E8F0E3] text-[#174B35] font-bold text-xs sm:text-sm border border-[#729B59]/30">
-                {user.role === "Buyer" ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <span>Buyer Dashboard (Catalog &amp; Procurement)</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18m0-18c4 0 7 3 7 7 0 5-7 11-7 11S5 15 5 10c0-4 3-7 7-7z" />
-                    </svg>
-                    <span>Seller Dashboard (Inventory &amp; Inquiries)</span>
-                  </>
-                )}
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveView("seller");
+                  router.replace("/dashboard?role=seller");
+                }}
+                className={`py-2 px-4 rounded-lg font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeView === "seller"
+                    ? "bg-[#174B35] text-white shadow-xs"
+                    : "text-[#174B35] hover:bg-white/60"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v18m0-18c4 0 7 3 7 7 0 5-7 11-7 11S5 15 5 10c0-4 3-7 7-7z" />
+                </svg>
+                <span>Seller View</span>
+              </button>
+            </div>
           </div>
 
-          <span className="text-xs text-gray-500 pr-2">
-            Active Mode: <strong className="text-[#174B35]">{activeView === "buyer" ? "Buyer Procurement" : "Seller Harvest & Listings"}</strong>
-          </span>
+          <div className="flex items-center gap-3 pr-2">
+            <span className="text-xs text-gray-500 hidden sm:inline">
+              Active Mode: <strong className="text-[#174B35]">{activeView === "buyer" ? "Buyer Procurement" : "Seller Harvest & Listings"}</strong>
+            </span>
+            <Link
+              href="/get-started"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:text-[#174B35] hover:border-[#174B35] hover:bg-[#F5F5EB] transition-all shadow-2xs"
+            >
+              <svg className="w-3.5 h-3.5 text-[#174B35]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              <span>Switch Role Boxes (/get-started)</span>
+            </Link>
+          </div>
         </div>
 
         {/* ========================================================================= */}

@@ -3,756 +3,602 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import MarketplaceHeader from "@/components/marketplace/MarketplaceHeader";
-import SendEnquiryModal from "@/components/enquiry/SendEnquiryModal";
+import { useRouter } from "next/navigation";
+import BuyerHeader from "@/components/marketplace/BuyerHeader";
+import BottomTabBar from "@/components/marketplace/BottomTabBar";
+import ImageGallery from "@/components/marketplace/ImageGallery";
+import SupplierPanel from "@/components/marketplace/SupplierPanel";
+import StatusBadge from "@/components/marketplace/StatusBadge";
+import ProductCard from "@/components/marketplace/ProductCard";
+import SendEnquiryModal from "@/components/marketplace/SendEnquiryModal";
+import SupplierProfileModal from "@/components/marketplace/SupplierProfileModal";
+import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
+import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
+import BuyerProfileModal from "@/components/marketplace/BuyerProfileModal";
+import HelpModal from "@/components/marketplace/HelpModal";
 import {
-  getSellerForProduct,
+  getMarketplaceProductById,
+  getMarketplaceProducts,
+} from "@/services/marketplaceApi";
+import {
+  getLocalBuyerAccessState,
   unlockSellerContact,
-  topUpBuyerQuota,
-  getBuyerAccessEntitlement,
 } from "@/services/sellerAccessApi";
-import { getLocalStoredProducts } from "@/services/productApi";
+import { SELLER_DIRECTORY, B2B_CATALOG_PRODUCTS } from "@/data/marketplaceCatalog";
 
 export default function ProductDetailsClient({ productId }) {
-  // Mock marketplace catalog matching verified Tamil Nadu producers
-  const catalogProducts = [
-    {
-      id: "prod_101",
-      title: "Salem High-Curcumin Turmeric Finger",
-      category: "Spices & Condiments",
-      variety: "Salem Local (Curcumin 4.8%)",
-      grade: "Grade A (Premium)",
-      pricePerUnit: 140,
-      unit: "kg",
-      availableStock: 2500,
-      minOrderQuantity: 100,
-      moqUnit: "kg",
-      harvestDate: "2026-10-15",
-      shelfLife: "18 Months",
-      packaging: "50kg Jute Gunny Bags",
-      processing: "Sun-dried & Double Polished",
-      farmingMethod: "Certified Organic (Zero Chemical)",
-      certifications: ["NPOP Organic", "FSSAI Verified"],
-      originVillage: "Anaimalai",
-      originDistrict: "Salem",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_982412",
-      sellerName: "Kongu Natural Organic Farms",
-      sellerType: "Organic Producer",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-        "/images/hero-turmeric-harvest.png",
-      ],
-      description:
-        "Direct harvest lot of traditional Salem high-curcumin turmeric fingers. Grown without chemical pesticides, cured under direct sun on clean concrete drying beds, and double-polished for export-grade presentation. Ideal for extraction, pharmaceutical use, and premium masala blending.",
-    },
-    {
-      id: "prod_102",
-      title: "Grade-A Ooty Carrots (Fresh Washed)",
-      category: "Vegetables & Tubers",
-      variety: "Nantes European Cross",
-      grade: "Grade A (Export Quality)",
-      pricePerUnit: 38,
-      unit: "kg",
-      availableStock: 1200,
-      minOrderQuantity: 300,
-      moqUnit: "kg",
-      harvestDate: "2026-11-04",
-      shelfLife: "14 Days in cold storage",
-      packaging: "25kg Ventilated Plastic Crates",
-      processing: "Hydro-cooled & Machine Washed",
-      farmingMethod: "Hill Valley Terrace Cultivation",
-      certifications: ["Horticulture Dept Verified"],
-      originVillage: "Ketti Valley",
-      originDistrict: "Nilgiris",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_441209",
-      sellerName: "Nilgiris Horticulture Farmer Society",
-      sellerType: "Agricultural Producer (FPO)",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-      ],
-      description:
-        "High-altitude crisp Ooty carrots harvested at dawn, hydro-washed with pure mountain spring water, and crated same day. High brix sweetness and vibrant orange color. Available for direct bulk supply to central vegetable markets and supermarket chains.",
-    },
-    {
-      id: "prod_103",
-      title: "Cold-Pressed Groundnut Oil (Wood Churn)",
-      category: "Oils & Oilseeds",
-      variety: "Marachekku (Cold Pressed)",
-      grade: "Grade A (Premium)",
-      pricePerUnit: 210,
-      unit: "litre",
-      availableStock: 450,
-      minOrderQuantity: 50,
-      moqUnit: "litre",
-      harvestDate: "2026-10-28",
-      shelfLife: "9 Months",
-      packaging: "15-Litre Food Grade Tin / 200L Drum",
-      processing: "Slow Wooden Vaagai Chekku Extraction (< 42°C)",
-      farmingMethod: "Natural Agro Processing",
-      certifications: ["FSSAI License: 10020042000789"],
-      originVillage: "Perundurai",
-      originDistrict: "Erode",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_771822",
-      sellerName: "Kongu Traditional Chekku Producers",
-      sellerType: "Ingredient Producer",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-      ],
-      description:
-        "Traditional cold-pressed groundnut oil extracted in Vaagai wood press from hand-picked native groundnuts. Unrefined, unbleached, with natural aroma and zero chemical preservatives. Lab tested free of argemone and aflatoxin.",
-    },
-    {
-      id: "prod_105",
-      title: "Organic Wild Forest Honey",
-      category: "Organic & Natural Produce",
-      variety: "Javadi Hills Raw Wild Honey",
-      grade: "Grade A (Export Quality)",
-      pricePerUnit: 390,
-      unit: "kg",
-      availableStock: 80,
-      minOrderQuantity: 20,
-      moqUnit: "kg",
-      harvestDate: "2026-09-15",
-      shelfLife: "24 Months",
-      packaging: "25kg Food-grade HDPE Barrels",
-      processing: "Raw Unheated & Cloth Filtered",
-      farmingMethod: "Tribal Cooperative Wild Harvest",
-      certifications: ["Tribal Cooperative Certified", "FSSAI Verified"],
-      originVillage: "Jamunamarathur",
-      originDistrict: "Tiruvannamalai",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_312984",
-      sellerName: "Javadi Hills Tribal Honey Society",
-      sellerType: "Farmer / Producer Group",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-      ],
-      description:
-        "Raw unprocessed wild multi-flora honey sustainably gathered by indigenous tribal honey hunters in Javadi Hills. Unpasteurized and unfiltered except for double cotton cloth filtration. Rich pollen content with natural medicinal properties.",
-    },
-    {
-      id: "prod_106",
-      title: "BPT 5204 Deluxe Ponni Paddy (Aged Grains)",
-      category: "Grains & Millets",
-      variety: "BPT 5204 Andhra / Ponni Cross",
-      grade: "Grade A (Premium)",
-      pricePerUnit: 24,
-      unit: "kg",
-      availableStock: 15000,
-      minOrderQuantity: 1000,
-      moqUnit: "kg",
-      harvestDate: "2026-10-01",
-      shelfLife: "12 Months",
-      packaging: "75kg Moisture Barrier Gunny Bags",
-      processing: "Mandi Standard Cleaned & Destoned",
-      farmingMethod: "Cauvery Delta Canal Irrigated",
-      certifications: ["Uzhavar Sandhai Registered"],
-      originVillage: "Kumbakonam",
-      originDistrict: "Thanjavur",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_619022",
-      sellerName: "Cauvery Delta Uzhavar Producer Company",
-      sellerType: "Agricultural Producer (FPO)",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-      ],
-      description:
-        "Aged 1-year cured Deluxe Ponni raw paddy harvested in the fertile Cauvery delta belt. High milling recovery percentage (> 68%), low breakage, and superior cooking aroma. Minimum moisture content under 12%. Direct delivery available by truckload.",
-    },
-    {
-      id: "prod_107",
-      title: "Desi Country Small Red Onions (Shallots)",
-      category: "Vegetables & Tubers",
-      variety: "Co-4 Small Onion",
-      grade: "Grade A (Export Quality)",
-      pricePerUnit: 48,
-      unit: "kg",
-      availableStock: 3500,
-      minOrderQuantity: 200,
-      moqUnit: "kg",
-      harvestDate: "2026-11-02",
-      shelfLife: "45 Days in ventilated storage",
-      packaging: "10kg & 25kg Net Mesh Bags",
-      processing: "Field Cured & Root Trimmed",
-      farmingMethod: "Traditional Drip Irrigated",
-      certifications: ["Mandi Quality Inspected"],
-      originVillage: "Oddanchatram",
-      originDistrict: "Dindigul",
-      originState: "Tamil Nadu",
-      sellerId: "APP_US_883190",
-      sellerName: "Dindigul Traditional Agri Farmers",
-      sellerType: "Farmer",
-      images: [
-        "/images/about-farmer-harvest.jpg",
-      ],
-      description:
-        "Original Tamil Nadu country sambar shallots from Oddanchatram belt. Uniform medium size, deep pink outer peel, punchy pungency, and exceptional shelf life. Pre-sorted and packed in ventilated mesh bags.",
-    },
-  ];
+  const router = useRouter();
 
-  // Resolve product from local seller products and multi-seller catalog
-  const [product] = useState(() => {
-    const locallyStored = getLocalStoredProducts();
-    const foundLocal = locallyStored.find((p) => String(p.id) === String(productId));
-    if (foundLocal) {
-      return {
-        ...foundLocal,
-        images:
-          foundLocal.images && foundLocal.images.length > 0
-            ? foundLocal.images.map((i) => (typeof i === "string" ? i : i.url))
-            : [foundLocal.thumbnail || "/images/about-farmer-harvest.jpg"],
-        originVillage: foundLocal.originVillage || foundLocal.village || "",
-        originDistrict: foundLocal.originDistrict || foundLocal.district || "Tamil Nadu",
-        originState: foundLocal.originState || "Tamil Nadu",
-        sellerId: foundLocal.sellerId || "APP_US_982412",
-        sellerName: foundLocal.sellerName || "Kongu Natural Organic Farms",
-        sellerType: foundLocal.sellerType || "Farmer",
-      };
-    }
-    return catalogProducts.find((p) => String(p.id) === String(productId));
-  });
+  const [product, setProduct] = useState(null);
+  const [allProducts, setAllProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  // Active Image Gallery Selection
-  const [activeImage, setActiveImage] = useState(
-    product?.images?.[0] || "/images/about-farmer-harvest.jpg"
-  );
-
-  // Seller Details & Access State initialized lazily
-  const [seller, setSeller] = useState(() => {
-    return product ? getSellerForProduct(product.sellerId) : null;
-  });
-  const [accessEntitlement, setAccessEntitlement] = useState(null);
+  // Seller access state
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [unlockMessage, setUnlockMessage] = useState("");
-  const [isTopUpLoading, setIsTopUpLoading] = useState(false);
+  const [quotaRemaining, setQuotaRemaining] = useState(10);
+  const [isSaved, setIsSaved] = useState(false);
 
-  // Send Enquiry Modal State
+  // Modals state
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [enquirySentBadge, setEnquirySentBadge] = useState(false);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+  const [isSellerAccessOpen, setIsSellerAccessOpen] = useState(false);
+  const [isPostRequirementOpen, setIsPostRequirementOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
-  // Load Buyer access state
   useEffect(() => {
     let isMounted = true;
-    getBuyerAccessEntitlement().then((res) => {
-      if (isMounted && res.data) {
-        setAccessEntitlement(res.data);
+
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [prodRes, catalogRes] = await Promise.all([
+          getMarketplaceProductById(productId),
+          getMarketplaceProducts(),
+        ]);
+
+        if (!isMounted) return;
+
+        let foundProd = prodRes?.success ? prodRes.data : null;
+        if (!foundProd) {
+          foundProd = B2B_CATALOG_PRODUCTS.find((p) => p.id === productId);
+        }
+
+        if (foundProd) {
+          setProduct(foundProd);
+
+          // Track in "Continue where you left off"
+          try {
+            const rawRecent = localStorage.getItem("ulavan_recent_views");
+            let recents = rawRecent ? JSON.parse(rawRecent) : [];
+            recents = [foundProd.id, ...recents.filter((id) => id !== foundProd.id)].slice(0, 8);
+            localStorage.setItem("ulavan_recent_views", JSON.stringify(recents));
+          } catch (e) {}
+
+          // Check if saved
+          try {
+            const rawSaved = localStorage.getItem("ulavan_saved_products");
+            if (rawSaved) {
+              const list = JSON.parse(rawSaved);
+              setIsSaved(list.some((item) => (typeof item === "string" ? item === foundProd.id : item.id === foundProd.id)));
+            }
+          } catch (e) {}
+
+          // Check if seller is unlocked
+          const accessState = getLocalBuyerAccessState();
+          const sellerId = foundProd.sellerId;
+          setIsUnlocked(accessState.unlockedSellers.includes(sellerId));
+          setQuotaRemaining(accessState.quotaRemaining ?? 10);
+        } else {
+          setLoadError("Agricultural commodity listing not found or no longer active.");
+        }
+
+        if (catalogRes?.success && Array.isArray(catalogRes.data)) {
+          setAllProducts(catalogRes.data);
+        }
+      } catch (err) {
+        console.error("Error loading product details:", err);
+        if (isMounted) setLoadError("Unable to load commodity details.");
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-    });
+    }
+
+    loadData();
+
+    const handleAccessChange = () => {
+      const accessState = getLocalBuyerAccessState();
+      setQuotaRemaining(accessState.quotaRemaining ?? 10);
+      if (product?.sellerId) {
+        setIsUnlocked(accessState.unlockedSellers.includes(product.sellerId));
+      }
+    };
+    window.addEventListener("ulavan_access_changed", handleAccessChange);
+
     return () => {
       isMounted = false;
+      window.removeEventListener("ulavan_access_changed", handleAccessChange);
     };
-  }, []);
+  }, [productId]);
 
-  // Handle Unlock Seller Contact (BRD Rules: 10 free unlocks, repeat visit = 0 deduction)
+  // Unlock seller action
   const handleUnlockContact = async () => {
-    if (!product || !seller) return;
+    if (!product) return;
     setIsUnlocking(true);
-    setUnlockMessage("");
-
     try {
-      const res = await unlockSellerContact(product.id, seller.sellerId, product.title);
-
-      if (res.success && res.seller) {
-        setSeller(res.seller);
-        setAccessEntitlement((prev) => ({
-          ...prev,
-          quotaRemaining: res.quotaRemaining,
-          unlockedSellerIds: [...(prev?.unlockedSellerIds || []), seller.sellerId],
-        }));
-
-        if (res.deducted) {
-          setUnlockMessage(
-            `✓ Contact unlocked! 1 view deducted (${res.quotaRemaining} views remaining).`
-          );
-        } else {
-          setUnlockMessage(
-            `✓ Unlocked! You previously unlocked this seller (0 views deducted).`
-          );
-        }
+      const res = await unlockSellerContact(product.id, product.sellerId, product.title);
+      if (res.success) {
+        setIsUnlocked(true);
+        setQuotaRemaining(res.quotaRemaining);
+        window.dispatchEvent(new Event("ulavan_access_changed"));
       } else {
-        setUnlockMessage(res.error || "Unable to unlock seller contact.");
+        if (res.reason === "QUOTA_EXHAUSTED") {
+          setIsSellerAccessOpen(true);
+        }
       }
     } catch (err) {
-      console.error("Error unlocking seller contact:", err);
-      setUnlockMessage("Network error unlocking seller. Please try again.");
+      console.error("Unlock contact error:", err);
     } finally {
       setIsUnlocking(false);
     }
   };
 
-  // Handle Top-Up (+10 views for ₹10)
-  const handleTopUp = async () => {
-    setIsTopUpLoading(true);
+  // Toggle Save Bookmark
+  const handleToggleSave = () => {
+    if (!product) return;
     try {
-      const res = await topUpBuyerQuota();
-      if (res.success) {
-        setAccessEntitlement((prev) => ({
-          ...prev,
-          quotaRemaining: res.quotaRemaining,
-        }));
-        setUnlockMessage("✓ Top-up successful! +10 seller contact unlocks added to your account.");
+      const rawSaved = localStorage.getItem("ulavan_saved_products");
+      let list = rawSaved ? JSON.parse(rawSaved) : [];
+      const prodId = product.id;
+      const alreadySaved = list.some((item) => (typeof item === "string" ? item === prodId : item.id === prodId));
+
+      if (alreadySaved) {
+        list = list.filter((item) => (typeof item === "string" ? item !== prodId : item.id !== prodId));
+        setIsSaved(false);
+      } else {
+        list.push(product);
+        setIsSaved(true);
       }
-    } catch (err) {
-      console.error("Top-up failed:", err);
-    } finally {
-      setIsTopUpLoading(false);
-    }
+
+      localStorage.setItem("ulavan_saved_products", JSON.stringify(list));
+      window.dispatchEvent(new Event("ulavan_saved_changed"));
+    } catch (e) {}
   };
 
-  if (!product) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans">
-        <MarketplaceHeader />
-        <main className="max-w-4xl mx-auto w-full px-4 py-16 text-center space-y-4">
-          <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto text-2xl font-black">
-            !
-          </div>
-          <h1 className="text-2xl font-black text-gray-900">
-            Produce Listing Not Found
-          </h1>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">
-            The requested agricultural lot ID (<code>{productId}</code>) may have been sold out, deactivated, or removed by the seller.
-          </p>
-          <div className="pt-4">
-            <Link
-              href="/marketplace"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs shadow-xs"
-            >
-              &larr; Return to Marketplace Lots
-            </Link>
-          </div>
-        </main>
+      <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+        Loading commodity specifications and verified grower profile...
       </div>
     );
   }
 
-  const quota = accessEntitlement?.quotaRemaining ?? 10;
-  const isUnlocked = Boolean(seller?.isUnlocked);
+  if (loadError || !product) {
+    return (
+      <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans">
+        <BuyerHeader />
+        <div className="flex-1 max-w-xl mx-auto flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl mb-3">
+            ⚠️
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Listing Unavailable</h2>
+          <p className="text-xs text-gray-600 mb-6">{loadError || "This agricultural produce lot is no longer listed."}</p>
+          <Link
+            href="/marketplace"
+            className="px-6 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold hover:bg-[#103A29] transition-colors"
+          >
+            &larr; Return to Marketplace
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Related products from same category
+  const relatedProducts = allProducts
+    .filter((p) => p.id !== product.id && p.category === product.category)
+    .slice(0, 4);
+
+  // More from this seller
+  const moreFromSupplier = allProducts
+    .filter((p) => p.id !== product.id && (p.sellerId === product.sellerId || p.sellerName === product.sellerName))
+    .slice(0, 4);
+
+  // Supplier directory profile
+  const supplierProfile =
+    SELLER_DIRECTORY.find((s) => s.id === product.sellerId || s.name === product.sellerName) || {
+      id: product.sellerId,
+      name: product.sellerName,
+      sellerType: product.sellerType || "Verified Producer",
+      district: product.originDistrict || product.district,
+      verified: true,
+      description: "Direct agricultural producer and registered trading entity on Ulavan Santhai.",
+    };
 
   return (
-    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white">
-      <MarketplaceHeader />
+    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-24 lg:pb-12">
+      {/* 1. Header (Sticky 2-row header replacing sidebar) */}
+      <BuyerHeader
+        onSearch={(q, cat) => router.push(`/marketplace?search=${encodeURIComponent(q)}&category=${encodeURIComponent(cat || "")}`)}
+        onOpenPostRequirement={() => setIsPostRequirementOpen(true)}
+        onOpenSellerAccess={() => setIsSellerAccessOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex-1 space-y-8">
-        {/* Navigation Breadcrumb & Quick Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-            <Link
-              href="/marketplace"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-[#174B35] hover:text-[#103A29] hover:border-[#174B35]/40 transition-colors shadow-2xs font-bold"
-            >
-              <span>&larr;</span>
-              <span>Back to Marketplace</span>
-            </Link>
-            <span>/</span>
-            <span className="text-gray-400">{product.category}</span>
-            <span>/</span>
-            <span className="text-gray-900 truncate max-w-xs">{product.title}</span>
+      {/* Main Product Container */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-5 space-y-8">
+        {/* Breadcrumb Navigation */}
+        <nav className="flex items-center gap-2 text-xs text-gray-500 overflow-x-auto whitespace-nowrap">
+          <Link href="/marketplace" className="hover:text-[#174B35] font-semibold">
+            Marketplace
+          </Link>
+          <span>/</span>
+          <Link
+            href={`/marketplace?category=${encodeURIComponent(product.category)}`}
+            className="hover:text-[#174B35] font-semibold"
+          >
+            {product.category}
+          </Link>
+          {product.subcategory && (
+            <>
+              <span>/</span>
+              <span className="text-gray-600">{product.subcategory}</span>
+            </>
+          )}
+          <span>/</span>
+          <span className="text-gray-900 font-bold truncate max-w-[200px] sm:max-w-xs">
+            {product.title}
+          </span>
+        </nav>
+
+        {/* 3-Column Product Details Grid (Amazon / Flipkart style B2B layout) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* ======================================================== */}
+          {/* COLUMN 1 (Left, 4 Cols): Gallery (3-4 Thumbnails + Zoom) */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-4 space-y-4">
+            <ImageGallery
+              images={
+                Array.isArray(product.galleryImages) && product.galleryImages.length > 0
+                  ? product.galleryImages
+                  : [product.thumbnail || product.image || "/images/about-farmer-harvest.jpg"]
+              }
+              title={product.title}
+            />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/buyer/enquiries"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-[#174B35] text-xs font-bold shadow-2xs transition-colors"
-            >
-              <span>💬</span>
-              <span>My Enquiries</span>
-            </Link>
-            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/70 px-2.5 py-1 rounded-full border border-emerald-200">
-              ✓ Verified Producer Lot
-            </span>
-          </div>
-        </div>
-
-        {/* Top Product & Seller Overview Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Image Gallery (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Primary Large Image */}
-            <div className="relative aspect-square w-full rounded-3xl overflow-hidden bg-white border border-gray-200/90 shadow-2xs">
-              <Image
-                src={activeImage}
-                alt={product.title}
-                fill
-                sizes="(max-width: 1024px) 100vw, 500px"
-                className="object-cover"
-                priority
-              />
-              <div className="absolute top-4 left-4 flex flex-col gap-1.5">
-                <span className="px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#174B35] text-xs font-black shadow-xs">
-                  {product.grade || "Grade A"}
+          {/* ======================================================== */}
+          {/* COLUMN 2 (Middle, 5 Cols): Specs, Badges, Price, Specs   */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-7 border border-gray-200/90 shadow-2xs space-y-6">
+            {/* Header: Title & Badges */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#729B59]">
+                  {product.category} {product.subcategory ? `• ${product.subcategory}` : ""}
                 </span>
-                {product.certifications?.map((c, i) => (
-                  <span
-                    key={i}
-                    className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold shadow-xs"
-                  >
-                    ✓ {c}
+                <StatusBadge type={product.availabilityStatus || "IN_STOCK"} size="sm" />
+                {product.organicStatus?.includes("Organic") && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span>🌱 Certified Organic</span>
                   </span>
-                ))}
+                )}
+              </div>
+
+              <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-snug">
+                {product.title}
+              </h1>
+
+              {product.tamilTitle && (
+                <div className="text-sm font-bold text-emerald-800">
+                  {product.tamilTitle}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-xs text-gray-500 pt-0.5">
+                <span>📍 Origin:</span>
+                <strong className="text-gray-800">
+                  {product.productionLocation || `${product.originDistrict}, Tamil Nadu`}
+                </strong>
+                <span>•</span>
+                <span>Ref: <strong className="font-mono">{product.id}</strong></span>
               </div>
             </div>
 
-            {/* Thumbnail Gallery Switcher */}
-            {product.images?.length > 1 && (
-              <div className="flex items-center gap-3">
-                {product.images.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveImage(img)}
-                    className={`w-16 h-16 rounded-2xl overflow-hidden relative border-2 transition-all cursor-pointer ${
-                      activeImage === img
-                        ? "border-[#174B35] shadow-xs scale-105"
-                        : "border-gray-200 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <Image
-                      src={img}
-                      alt={`${product.title} thumbnail ${idx + 1}`}
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
+            {/* Price Box / Request Price */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-[#F5F5EB] border border-emerald-200/80 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-gray-500 font-semibold block uppercase">
+                  Wholesale Mandi Price
+                </span>
+                <div className="flex items-baseline gap-1 mt-0.5">
+                  {product.price ? (
+                    <>
+                      <span className="text-2xl sm:text-3xl font-black text-[#174B35]">
+                        ₹{product.price}
+                      </span>
+                      <span className="text-xs text-gray-600 font-bold">
+                        / {product.unit}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xl font-black text-[#174B35]">
+                      Request Price
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[11px] text-gray-500 font-semibold block uppercase">
+                  Min. Order Qty (MOQ)
+                </span>
+                <span className="text-sm sm:text-base font-extrabold text-gray-900 mt-0.5 block">
+                  {product.moq} {product.unit}
+                </span>
+                <span className="text-[10px] text-gray-500">
+                  {product.availableStock ? `Stock: ${product.availableStock} ${product.unit}` : "Bulk lot ready"}
+                </span>
+              </div>
+            </div>
+
+            {/* Complete BRD Listing Specification Table */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800 pb-1 border-b border-gray-100">
+                Commodity Specifications &amp; Quality Parameters
+              </h3>
+
+              <div className="divide-y divide-gray-100 text-xs">
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Variety / Cultivar</span>
+                  <span className="font-bold text-gray-900">{product.variety || "Indigenous Commercial"}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Quality Grade</span>
+                  <span className="font-bold text-gray-900">{product.grade || "Grade A (Premium)"}</span>
+                </div>
+                {product.sizeGrading && (
+                  <div className="py-2 flex justify-between">
+                    <span className="text-gray-500">Size / Mesh / Length</span>
+                    <span className="font-bold text-gray-900">{product.sizeGrading}</span>
+                  </div>
+                )}
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Origin District</span>
+                  <span className="font-bold text-gray-900">{product.originDistrict || "Tamil Nadu"}</span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Packaging Format</span>
+                  <span className="font-bold text-gray-900">{product.packaging || "Standard Commercial Bags"}</span>
+                </div>
+                {product.shelfLife && (
+                  <div className="py-2 flex justify-between">
+                    <span className="text-gray-500">Shelf Life</span>
+                    <span className="font-bold text-gray-900">{product.shelfLife}</span>
+                  </div>
+                )}
+                {product.processingMethod && (
+                  <div className="py-2 flex justify-between">
+                    <span className="text-gray-500">Processing Method</span>
+                    <span className="font-bold text-gray-900">{product.processingMethod}</span>
+                  </div>
+                )}
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Farming / Certification</span>
+                  <span className="font-bold text-emerald-800">
+                    {product.organicStatus || "Conventional Direct Farm"}
+                    {product.certificationDetails ? ` (${product.certificationDetails})` : ""}
+                  </span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Lot Availability</span>
+                  <span className="font-bold text-gray-900">
+                    {product.availabilityStatus === "IN_STOCK" ? "Ready for Immediate Dispatch" : product.availabilityStatus}
+                  </span>
+                </div>
+                <div className="py-2 flex justify-between">
+                  <span className="text-gray-500">Catalog Verification</span>
+                  <span className="font-bold text-gray-700">{product.lastUpdated || "Verified Lot"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description Paragraph */}
+            {product.description && (
+              <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-800">
+                  Lot Details &amp; Harvest Notes
+                </h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {product.description}
+                </p>
               </div>
             )}
           </div>
 
-          {/* Right Column: Product Details & Purchase Actions (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              {/* Category & Status Badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider">
-                  {product.category}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Ready for Dispatch
-                </span>
-              </div>
-
-              {/* Title & Variety */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight leading-tight">
-                {product.title}
-              </h1>
-
-              {product.variety && (
-                <p className="text-sm font-semibold text-gray-600">
-                  Variety / Cultivar: <span className="text-gray-900 font-extrabold">{product.variety}</span>
-                </p>
-              )}
-
-              {/* Wholesale Pricing Display */}
-              <div className="p-5 rounded-3xl bg-white border border-gray-200/90 shadow-2xs flex flex-wrap items-baseline justify-between gap-4">
-                <div>
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                    Direct Farm Wholesale Rate
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl sm:text-4xl font-black text-[#174B35]">
-                      ₹{Number(product.pricePerUnit).toLocaleString("en-IN")}
-                    </span>
-                    <span className="text-sm sm:text-base font-bold text-gray-600">
-                      / {product.unit}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-[#729B59] font-bold">
-                    0% Mandi Commission &bull; Direct Producer Price
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                    Available Stock
-                  </span>
-                  <span className="text-lg sm:text-xl font-black text-gray-900">
-                    {Number(product.availableStock).toLocaleString("en-IN")} {product.unit}
-                  </span>
-                  <span className="text-[11px] text-gray-500 block">
-                    MOQ: {Number(product.minOrderQuantity).toLocaleString("en-IN")}{" "}
-                    {product.moqUnit || product.unit}
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-200/90 shadow-2xs space-y-2">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  Produce Description &amp; Specifications
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-
-              {/* Produce Attributes Grid */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-200/90 shadow-2xs grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
-                {product.farmingMethod && (
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Farming Method</span>
-                    <span className="font-bold text-gray-900 mt-0.5 block">{product.farmingMethod}</span>
-                  </div>
-                )}
-                {product.harvestDate && (
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Harvest Date</span>
-                    <span className="font-bold text-gray-900 mt-0.5 block">{product.harvestDate}</span>
-                  </div>
-                )}
-                {product.packaging && (
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Packaging Type</span>
-                    <span className="font-bold text-gray-900 mt-0.5 block">{product.packaging}</span>
-                  </div>
-                )}
-                {product.processing && (
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Processing / Curing</span>
-                    <span className="font-bold text-gray-900 mt-0.5 block">{product.processing}</span>
-                  </div>
-                )}
-                {product.shelfLife && (
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Shelf Life</span>
-                    <span className="font-bold text-gray-900 mt-0.5 block">{product.shelfLife}</span>
-                  </div>
-                )}
-                <div>
-                  <span className="text-gray-400 block text-[11px]">Harvest Location</span>
-                  <span className="font-bold text-gray-900 mt-0.5 block">
-                    {product.originVillage ? `${product.originVillage}, ` : ""}{product.originDistrict}, {product.originState}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Buyer Primary Actions: Send Enquiry + Unlock Contact */}
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => setIsEnquiryModalOpen(true)}
-                className="flex-1 py-3.5 px-6 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white font-extrabold text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>💬</span>
-                <span>Send Purchase Enquiry</span>
-                <span>&rarr;</span>
-              </button>
-
-              {enquirySentBadge && (
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
-                  <span>✓</span>
-                  <span>Enquiry Dispatched</span>
-                </div>
-              )}
-            </div>
+          {/* ======================================================== */}
+          {/* COLUMN 3 (Right, 3 Cols): Sticky SupplierPanel          */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-3">
+            <SupplierPanel
+              product={product}
+              seller={supplierProfile}
+              quotaRemaining={quotaRemaining}
+              isUnlocked={isUnlocked}
+              isSaved={isSaved}
+              onToggleSave={handleToggleSave}
+              onEnquire={() => setIsEnquiryModalOpen(true)}
+              onViewSupplier={() => setIsSupplierModalOpen(true)}
+              onUnlockContact={handleUnlockContact}
+              isUnlocking={isUnlocking}
+            />
           </div>
         </div>
 
-        {/* Seller Access & Contact Card (Task 6 & Task 7 Integration) */}
-        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-2xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F0E3] text-[#174B35] text-xs font-bold uppercase tracking-wider mb-2">
-                <span>Verified Supplier Details</span>
+        {/* Supplier Summary Card Below the 3-Column Section */}
+        <div className="p-6 rounded-3xl bg-white border border-gray-200/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#E8F0E3] text-[#174B35] font-black flex items-center justify-center text-xl shrink-0">
+                {product.sellerName?.charAt(0) || "P"}
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                Seller &amp; Farm Access
-              </h2>
-              <p className="text-xs text-gray-500">
-                Direct producer contacts are protected under UlavanSanthai fair-trade buyer rules.
-              </p>
-            </div>
-
-            {/* Quota Counter Badge */}
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-[#F5F5EB] border border-gray-200 text-right">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
-                  Buyer Contact Access
-                </span>
-                <span className="text-sm font-black text-[#174B35]">
-                  {quota} of 10 Free Unlocks Remaining
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Unlock Message Notification Banner */}
-          {unlockMessage && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold animate-in fade-in duration-200">
-              {unlockMessage}
-            </div>
-          )}
-
-          {/* Seller Information Display: Locked vs. Unlocked */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Entity Overview */}
-            <div className="p-5 rounded-2xl bg-[#F5F5EB]/60 border border-gray-200/80 space-y-3">
               <div>
-                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">
-                  Business / Producer Entity
-                </span>
-                <span className="text-base font-black text-gray-900 mt-1 block">
-                  {seller?.businessName || product.sellerName}
-                </span>
-                <span className="text-xs font-bold text-[#729B59]">
-                  {seller?.sellerType || product.sellerType || "Farmer"}
-                </span>
-              </div>
-
-              <div className="pt-2 border-t border-gray-200/60 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Registered District:</span>
-                  <span className="font-bold text-gray-800">{seller?.district || product.originDistrict}</span>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-extrabold text-gray-900">
+                    {product.sellerName}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    ✓ Verified Producer
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">State:</span>
-                  <span className="font-bold text-gray-800">Tamil Nadu</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">KYC Status:</span>
-                  <span className="font-bold text-emerald-700">✓ Identity Verified</span>
-                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {product.sellerType || "Agricultural Producer"} • {product.originDistrict}, Tamil Nadu
+                </p>
               </div>
             </div>
 
-            {/* Direct Phone & Email Access */}
-            <div className="p-5 rounded-2xl bg-[#F5F5EB]/60 border border-gray-200/80 space-y-3">
-              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">
-                Direct Contact Person
-              </span>
-
-              {isUnlocked ? (
-                /* UNLOCKED: Full Permitted Direct Contact Details */
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Contact Person</span>
-                    <span className="font-black text-gray-900 text-sm">{seller?.contactPerson}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Phone / WhatsApp</span>
-                    <a
-                      href={`tel:${seller?.phone?.replace(/\s/g, "")}`}
-                      className="font-black text-[#174B35] hover:underline text-sm flex items-center gap-1.5"
-                    >
-                      <span>📞</span>
-                      <span>{seller?.phone}</span>
-                    </a>
-                  </div>
-
-                  {seller?.email && (
-                    <div>
-                      <span className="text-gray-400 block text-[11px]">Email Address</span>
-                      <a
-                        href={`mailto:${seller?.email}`}
-                        className="font-bold text-gray-800 hover:text-[#174B35] underline"
-                      >
-                        {seller?.email}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* LOCKED: Masked Contact & Unlock Action */
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Direct Mobile</span>
-                    <span className="font-mono font-bold text-gray-500 text-sm">
-                      {seller?.phone || "+91 94432 •••••"}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Email</span>
-                    <span className="font-mono text-gray-500">
-                      {seller?.email || "producer•••••@ulavansanthai.in"}
-                    </span>
-                  </div>
-
-                  <div className="pt-1">
-                    {quota > 0 ? (
-                      <button
-                        type="button"
-                        onClick={handleUnlockContact}
-                        disabled={isUnlocking}
-                        className="w-full py-2.5 px-4 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        {isUnlocking ? "Unlocking Contact..." : "🔓 Unlock Seller Details (1 View)"}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleTopUp}
-                        disabled={isTopUpLoading}
-                        className="w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-                      >
-                        {isTopUpLoading ? "Processing..." : "Top-up ₹10 for 10 Contact Unlocks"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Farm Facility Address & Licenses */}
-            <div className="p-5 rounded-2xl bg-[#F5F5EB]/60 border border-gray-200/80 space-y-3">
-              <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wider block">
-                Facility &amp; Business Licenses
-              </span>
-
-              {isUnlocked ? (
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <span className="text-gray-400 block text-[11px]">Facility / Farm Address</span>
-                    <span className="font-medium text-gray-800 leading-snug block">
-                      {seller?.address}, {seller?.district}, PIN: {seller?.pinCode || "642001"}
-                    </span>
-                  </div>
-
-                  {seller?.gstin && (
-                    <div className="pt-1 border-t border-gray-200/60">
-                      <span className="text-gray-400 block text-[11px]">GSTIN</span>
-                      <span className="font-mono font-bold text-gray-900">{seller.gstin}</span>
-                    </div>
-                  )}
-
-                  {seller?.fssaiNumber && (
-                    <div>
-                      <span className="text-gray-400 block text-[11px]">FSSAI Registration</span>
-                      <span className="font-mono font-bold text-gray-900">{seller.fssaiNumber}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2 text-xs text-gray-500">
-                  <p className="leading-relaxed">
-                    Physical farm address, dispatch yard pin-code, GSTIN, and FSSAI license numbers will be revealed once contact access is unlocked.
-                  </p>
-                  <div className="p-2.5 rounded-xl bg-white border border-gray-200 text-[11px] text-gray-600">
-                    ℹ️ <em>Repeat visits to an unlocked producer consume 0 view deductions.</em>
-                  </div>
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsSupplierModalOpen(true)}
+                className="px-4 py-2 rounded-xl border border-[#174B35] text-[#174B35] hover:bg-[#E8F0E3] text-xs font-bold transition-colors cursor-pointer"
+              >
+                View Full Supplier Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEnquiryModalOpen(true)}
+                className="px-5 py-2 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+              >
+                Send Enquiry
+              </button>
             </div>
           </div>
-        </section>
+
+          <p className="text-xs text-gray-600 leading-relaxed">
+            {supplierProfile.description}
+          </p>
+        </div>
+
+        {/* More from this Supplier */}
+        {moreFromSupplier.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-black text-gray-900 tracking-tight">
+              More from {product.sellerName}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {moreFromSupplier.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  onEnquire={(item) => {
+                    setProduct(item);
+                    setIsEnquiryModalOpen(true);
+                  }}
+                  onViewSupplier={() => setIsSupplierModalOpen(true)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Related Products in this Category */}
+        {relatedProducts.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-black text-gray-900 tracking-tight">
+              Related Commodities in {product.category}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {relatedProducts.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  onEnquire={(item) => {
+                    setProduct(item);
+                    setIsEnquiryModalOpen(true);
+                  }}
+                  onViewSupplier={() => setIsSupplierModalOpen(true)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
-      {/* Send Enquiry Modal */}
+      {/* Mobile Sticky Bottom Action Bar with Send Enquiry */}
+      <div className="lg:hidden fixed bottom-16 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 flex items-center justify-between gap-3 shadow-lg">
+        <div>
+          <span className="text-[10px] text-gray-500 font-semibold block">Wholesale Price</span>
+          <span className="text-base font-black text-[#174B35]">
+            {product.price ? `₹${product.price} / ${product.unit}` : "Request Price"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleSave}
+            className={`p-2.5 rounded-xl border transition-colors ${
+              isSaved ? "bg-red-50 text-red-600 border-red-200" : "bg-white text-gray-600 border-gray-300"
+            }`}
+            title="Save Product"
+          >
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsEnquiryModalOpen(true)}
+            className="px-6 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold shadow-md active:scale-95 transition-all cursor-pointer"
+          >
+            Send Enquiry &rarr;
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Tab Bar */}
+      <BottomTabBar />
+
+      {/* Modals */}
       <SendEnquiryModal
-        product={product}
-        seller={seller}
         isOpen={isEnquiryModalOpen}
+        product={product}
         onClose={() => setIsEnquiryModalOpen(false)}
-        onEnquirySuccess={(enq) => {
-          setEnquirySentBadge(true);
+      />
+
+      <SupplierProfileModal
+        isOpen={isSupplierModalOpen}
+        supplier={supplierProfile}
+        onClose={() => setIsSupplierModalOpen(false)}
+        onOpenSendEnquiry={(p) => {
+          setProduct(p);
+          setIsEnquiryModalOpen(true);
         }}
+      />
+
+      <SellerAccessModal
+        isOpen={isSellerAccessOpen}
+        onClose={() => setIsSellerAccessOpen(false)}
+      />
+
+      <PostRequirementModal
+        isOpen={isPostRequirementOpen}
+        onClose={() => setIsPostRequirementOpen(false)}
+      />
+
+      <BuyerProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </div>
   );
