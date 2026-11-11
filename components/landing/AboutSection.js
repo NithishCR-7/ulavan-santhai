@@ -151,14 +151,10 @@ export default function AboutSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                 {/* Top Badge */}
-                <div className="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#174B35] text-[11px] font-bold tracking-wider uppercase shadow-xs">
-                  Farming Communities
-                </div>
+                   
                 
                 {/* Bottom Caption */}
-                <div className="absolute bottom-3.5 left-4 right-4 text-white text-xs sm:text-sm font-semibold drop-shadow-sm">
-                  Direct partnerships with regional growers &amp; producer groups
-                </div>
+                
               </div>
 
               {/* Overlapping Secondary Image: Farmer Harvesting Fresh Produce */}
@@ -180,14 +176,10 @@ export default function AboutSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 
                 {/* Top Badge */}
-                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#174B35]/95 backdrop-blur-md text-white text-[11px] font-bold tracking-wider uppercase shadow-xs">
-                  Fresh Harvest
-                </div>
+               
                 
                 {/* Bottom Caption */}
-                <div className="absolute bottom-3 left-3 right-3 text-white text-xs sm:text-sm font-semibold drop-shadow-sm">
-                  Sourced straight from harvest for verified market demand
-                </div>
+                
               </div>
 
               {/* Floating Trust Badge */}
