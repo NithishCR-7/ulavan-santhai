@@ -18,13 +18,12 @@ import {
 } from "@/services/enquiryApi";
 import { useSessionUser } from "@/services/sessionAuth";
 import { SELLER_DIRECTORY } from "@/data/marketplaceCatalog";
-import { getLocalBuyerAccessState } from "@/services/sellerAccessApi";
 
 export default function BuyerEnquiriesPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+        <div className="min-h-screen bg-[#FBFBF9] flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
           Loading your commercial enquiries...
         </div>
       }
@@ -40,7 +39,7 @@ function BuyerEnquiriesContent() {
 
   const [enquiries, setEnquiries] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("All"); // "All" | "Sent" | "Seen" | "Responded" | "Closed"
+  const [activeTab, setActiveTab] = useState("All"); // "All" | "Pending" | "Answered"
   const [searchQuery, setSearchQuery] = useState("");
 
   // Detailed Modal State
@@ -93,24 +92,20 @@ function BuyerEnquiriesContent() {
     } catch (err) {}
   };
 
-  // Status mapping:
-  // "NEW" -> "Sent"
-  // "VIEWED" -> "Seen"
-  // "RESPONDED" -> "Responded"
-  // "CLOSED" -> "Closed"
+  // Status mapping for Screenshot 4:
+  // "RESPONDED" -> "Answered"
+  // "NEW", "VIEWED", "SENT" -> "Pending"
   const getNormalizedStatus = (enq) => {
     const s = (enq.status || "NEW").toUpperCase();
-    if (s === "NEW" || s === "SENT") return "Sent";
-    if (s === "VIEWED" || s === "SEEN") return "Seen";
-    if (s === "RESPONDED") return "Responded";
-    if (s === "CLOSED") return "Closed";
-    return "Sent";
+    if (s === "RESPONDED" || s === "ANSWERED") return "Answered";
+    return "Pending";
   };
 
   // Filter enquiries by Tab and Search
   const filteredEnquiries = enquiries.filter((enq) => {
     const norm = getNormalizedStatus(enq);
-    if (activeTab !== "All" && norm !== activeTab) return false;
+    if (activeTab === "Pending" && norm !== "Pending") return false;
+    if (activeTab === "Answered" && norm !== "Answered") return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -121,6 +116,15 @@ function BuyerEnquiriesContent() {
     }
     return true;
   });
+
+  // Handle Logout
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+      localStorage.removeItem("ulavan_buyer_token");
+      router.push("/login");
+    }
+  };
 
   // Reply handler
   const handleSendFollowUp = async (e) => {
@@ -135,7 +139,7 @@ function BuyerEnquiriesContent() {
     setIsSendingReply(true);
     try {
       const res = await replyToEnquiryAsBuyer(activeEnquiry.id, {
-        buyerName: sessionUser?.businessName || sessionUser?.name || "Registered Buyer",
+        buyerName: sessionUser?.businessName || sessionUser?.name || "Sherlin A",
         message: followUpMessage.trim(),
       });
 
@@ -165,265 +169,308 @@ function BuyerEnquiriesContent() {
     } catch (e) {}
   };
 
-  // Render Status Badge
-  const renderStatusBadge = (statusNorm) => {
-    switch (statusNorm) {
-      case "Sent":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            Sent
-          </span>
-        );
-      case "Seen":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            Seen
-          </span>
-        );
-      case "Responded":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-            Responded
-          </span>
-        );
-      case "Closed":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-            Closed
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">
-            {statusNorm}
-          </span>
-        );
+  // Fallback product image resolver
+  const getThumbnailSrc = (enq) => {
+    if (enq.productThumbnail && enq.productThumbnail.startsWith("http")) {
+      return enq.productThumbnail;
     }
+    const title = (enq.productTitle || enq.commodity || "").toLowerCase();
+    if (title.includes("apple")) {
+      return "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=400&q=80";
+    }
+    if (title.includes("onion")) {
+      return "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=400&q=80";
+    }
+    if (title.includes("banana")) {
+      return "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=400&q=80";
+    }
+    if (title.includes("moong") || title.includes("dal")) {
+      return "https://images.unsplash.com/photo-1585994192701-f1a505c817ea?auto=format&fit=crop&w=400&q=80";
+    }
+    if (title.includes("rice")) {
+      return "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80";
+    }
+    if (title.includes("turmeric")) {
+      return "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=400&q=80";
+    }
+    return enq.productThumbnail || "/images/photographs/farmer-harvest.jpg";
   };
 
+  const displayName = sessionUser?.name || "Sherlin A";
+  const displayEmail = sessionUser?.email || "sherlinzenith@gmail.com";
+
   return (
-    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
-      {/* 1. Header (Sticky 2-row header replacing sidebar) */}
+    <div className="min-h-screen bg-[#FBFBF9] flex flex-col font-sans selection:bg-[#174B35] selection:text-white relative overflow-hidden pb-16">
+      {/* 1. Header matching Screenshot 4 & 6 */}
       <BuyerHeader
-        onSearch={(q, cat) => router.push(`/marketplace?search=${encodeURIComponent(q)}&category=${encodeURIComponent(cat || "")}`)}
+        onSearch={(q, cat) =>
+          router.push(
+            `/marketplace?search=${encodeURIComponent(q)}&category=${encodeURIComponent(cat || "")}`
+          )
+        }
         onOpenPostRequirement={() => setIsPostRequirementOpen(true)}
         onOpenSellerAccess={() => setIsSellerAccessOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Title Bar & Search */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200/90 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Link href="/marketplace" className="hover:text-[#174B35] font-semibold">
-              Marketplace
-            </Link>
-            <span>/</span>
-            <span className="text-gray-900 font-bold">My Enquiries</span>
-          </div>
+      {/* Main Container - 2 Column Layout Matching Screenshot 4 */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Profile Card & Navigation Sidebar */}
+          <aside className="md:col-span-4 lg:col-span-3">
+            <div className="bg-white rounded-2xl border border-gray-150 p-6 shadow-xs space-y-6">
+              {/* User Identity */}
+              <div className="flex flex-col items-center text-center">
+                <div className="w-18 h-18 rounded-full bg-[#174B35] text-white flex items-center justify-center text-2xl font-black shadow-inner ring-4 ring-emerald-50 mb-3">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <h3 className="text-base font-bold text-gray-900">{displayName}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{displayEmail}</p>
+              </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                My Enquiries &amp; Quotations Desk
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Track direct grower purchase enquiries, supplier responses, and wholesale contracts.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsPostRequirementOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-sm transition-all cursor-pointer self-start sm:self-center"
-            >
-              + Post New Requirement
-            </button>
-          </div>
-
-          {/* Search Box */}
-          <div className="pt-2">
-            <div className="relative max-w-md">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400">
-                🔍
-              </span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by commodity, supplier, or reference ID..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 5 Exact Status Tabs: All, Sent, Seen, Responded, Closed */}
-        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
-          {["All", "Sent", "Seen", "Responded", "Closed"].map((tab) => {
-            const isActive = activeTab === tab;
-            const count =
-              tab === "All"
-                ? enquiries.length
-                : enquiries.filter((e) => getNormalizedStatus(e) === tab).length;
-
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                  isActive
-                    ? "bg-[#174B35] text-white shadow-xs"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                <span>{tab}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-                  }`}
+              {/* Navigation Menu */}
+              <nav className="space-y-1.5 pt-2 border-t border-gray-100 text-xs font-semibold">
+                {/* 1. My Orders */}
+                <button
+                  type="button"
+                  onClick={() => router.push("/marketplace")}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
                 >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                  <span className="text-base">📦</span>
+                  <span>My Orders</span>
+                </button>
 
-        {/* Enquiries Content Table / Cards */}
-        {isLoading ? (
-          <div className="p-12 text-center text-xs text-gray-500">Loading your enquiries...</div>
-        ) : filteredEnquiries.length === 0 ? (
-          /* Empty State */
-          <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 space-y-4 max-w-lg mx-auto">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
-              📨
+                {/* 2. My Enquiries (ACTIVE) */}
+                <div className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#EAF5ED] text-[#174B35] font-bold">
+                  <span className="text-base">✉️</span>
+                  <span>My Enquiries</span>
+                </div>
+
+                {/* 3. Wishlist */}
+                <button
+                  type="button"
+                  onClick={() => router.push("/marketplace")}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                >
+                  <span className="text-base">🤍</span>
+                  <span>Wishlist</span>
+                </button>
+
+                {/* 4. Profile */}
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen(true)}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                >
+                  <span className="text-base">👤</span>
+                  <span>Profile</span>
+                </button>
+
+                {/* 5. Logout */}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
+                >
+                  <span className="text-base">🚪</span>
+                  <span>Logout</span>
+                </button>
+              </nav>
             </div>
+          </aside>
+
+          {/* Right Column: My Enquiries Workspace */}
+          <section className="md:col-span-8 lg:col-span-9 space-y-6">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">
-                No enquiries found under {activeTab}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                Connect with verified Tamil Nadu producers by sending a direct enquiry on any listing.
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                My Enquiries
+              </h1>
             </div>
-            <div className="pt-2">
-              <Link
-                href="/marketplace"
-                className="inline-flex px-6 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold hover:bg-[#103A29] shadow-sm transition-all"
-              >
-                Browse Marketplace &rarr;
-              </Link>
+
+            {/* Tabs: All | Pending | Answered */}
+            <div className="flex items-center gap-8 border-b border-gray-200">
+              {[
+                { label: "All", id: "All" },
+                { label: "Pending", id: "Pending" },
+                { label: "Answered", id: "Answered" },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`pb-3 text-xs sm:text-sm font-semibold transition-all relative cursor-pointer ${
+                      isActive
+                        ? "text-[#174B35] font-bold"
+                        : "text-gray-500 hover:text-gray-800"
+                    }`}
+                  >
+                    {tab.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#174B35] rounded-full" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        ) : (
-          /* Table of Enquiries (Desktop) / Cards (Mobile) */
-          <div className="bg-white rounded-3xl border border-gray-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[10px] font-extrabold">
-                    <th className="py-3.5 px-4">Reference</th>
-                    <th className="py-3.5 px-4">Product / Category</th>
-                    <th className="py-3.5 px-4">Supplier</th>
-                    <th className="py-3.5 px-4">Quantity</th>
-                    <th className="py-3.5 px-4">Date</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredEnquiries.map((enq) => {
-                    const statusNorm = getNormalizedStatus(enq);
-                    return (
-                      <tr key={enq.id} className="hover:bg-emerald-50/30 transition-colors">
-                        {/* 1. Reference */}
-                        <td className="py-3.5 px-4 font-mono font-bold text-gray-900 whitespace-nowrap">
-                          {enq.id}
-                        </td>
 
-                        {/* 2. Product / Category */}
-                        <td className="py-3.5 px-4 max-w-xs">
-                          <div className="font-bold text-gray-900 line-clamp-1">
-                            {enq.productTitle || enq.commodity || "Produce Lot"}
-                          </div>
-                          <div className="text-[11px] text-[#729B59] font-medium">
-                            {enq.productCategory || "Agricultural Products"}
-                          </div>
-                        </td>
+            {/* List of Enquiries */}
+            {isLoading ? (
+              <div className="p-12 text-center text-xs text-gray-400">
+                Loading your enquiries...
+              </div>
+            ) : filteredEnquiries.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-gray-200 space-y-3">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 text-2xl flex items-center justify-center mx-auto text-[#174B35]">
+                  ✉️
+                </div>
+                <h3 className="text-base font-bold text-gray-900">
+                  No {activeTab !== "All" ? activeTab.toLowerCase() : ""} enquiries found
+                </h3>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                  Enquire with verified farm producers directly on product pages to connect with sellers.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/marketplace"
+                    className="inline-flex px-5 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold hover:bg-[#103A29] transition-colors"
+                  >
+                    Explore Marketplace &rarr;
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredEnquiries.map((enq) => {
+                  const statusNorm = getNormalizedStatus(enq);
+                  const isAnswered = statusNorm === "Answered";
+                  const thumb = getThumbnailSrc(enq);
+                  const dateText =
+                    enq.formattedDate ||
+                    (enq.createdAt
+                      ? `Enquired on: ${new Date(enq.createdAt).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}`
+                      : "Enquired recently");
 
-                        {/* 3. Supplier */}
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="font-semibold text-gray-900">
-                            {enq.sellerName || "Verified Producer"}
-                          </div>
-                          <div className="text-[11px] text-gray-500">
-                            {enq.sellerDistrict || "Tamil Nadu"}
-                          </div>
-                        </td>
+                  return (
+                    <div
+                      key={enq.id}
+                      className="bg-white rounded-2xl border border-gray-150 p-4 sm:p-5 shadow-2xs flex items-center justify-between gap-4 hover:border-gray-300 transition-all"
+                    >
+                      {/* Left: Thumbnail & Details */}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 border border-gray-100 shrink-0 relative">
+                          <img
+                            src={thumb}
+                            alt={enq.productTitle || enq.commodity || "Product"}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-gray-900 text-sm sm:text-base truncate">
+                            {enq.productTitle || enq.commodity || "Agricultural Produce"}
+                          </h4>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {dateText.startsWith("Enquired on:") ? dateText : `Enquired on: ${dateText}`}
+                          </p>
+                        </div>
+                      </div>
 
-                        {/* 4. Quantity */}
-                        <td className="py-3.5 px-4 whitespace-nowrap font-bold text-gray-900">
-                          {enq.requestedQuantity} {enq.unitRequested || enq.unit || "kg"}
-                        </td>
+                      {/* Right: Status Pill & View Details Button */}
+                      <div className="flex items-center gap-3 sm:gap-6 shrink-0">
+                        {isAnswered ? (
+                          <span className="px-3.5 py-1 rounded-full text-[11px] font-semibold bg-[#EAF5ED] text-[#174B35] border border-emerald-200">
+                            Answered
+                          </span>
+                        ) : (
+                          <span className="px-3.5 py-1 rounded-full text-[11px] font-semibold bg-[#FFF7ED] text-[#C2410C] border border-orange-200">
+                            Pending
+                          </span>
+                        )}
 
-                        {/* 5. Date */}
-                        <td className="py-3.5 px-4 text-gray-500 whitespace-nowrap text-[11px]">
-                          {enq.formattedDate || new Date(enq.createdAt).toLocaleDateString("en-IN")}
-                        </td>
-
-                        {/* 6. Status */}
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {renderStatusBadge(statusNorm)}
-                        </td>
-
-                        {/* 7. Action */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setActiveEnquiry(enq)}
-                            className="px-3.5 py-1.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold transition-colors cursor-pointer"
-                          >
-                            View Details
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                        <button
+                          type="button"
+                          onClick={() => setActiveEnquiry(enq)}
+                          className="text-xs font-semibold text-gray-700 hover:text-[#174B35] flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <span>View Details</span>
+                          <span>&rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
 
-      {/* Screen 10: Detailed Enquiry Modal */}
+      {/* Decorative leaf motifs in bottom corners matching Screenshot 4 */}
+      <div className="fixed -bottom-10 -left-10 pointer-events-none opacity-20 z-0">
+        <svg width="220" height="220" viewBox="0 0 200 200" fill="none">
+          <path
+            d="M20 180C40 100 120 40 190 20C170 100 100 170 20 180Z"
+            fill="#174B35"
+          />
+          <path
+            d="M50 170C80 120 130 70 185 25"
+            stroke="#103A29"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+      <div className="fixed -bottom-10 -right-10 pointer-events-none opacity-15 z-0">
+        <svg width="220" height="220" viewBox="0 0 200 200" fill="none">
+          <path
+            d="M180 180C160 100 80 40 10 20C30 100 100 170 180 180Z"
+            fill="#174B35"
+          />
+        </svg>
+      </div>
+
+      {/* Detailed Enquiry Modal (Screen 10 / Screenshot 4 & 5 Integration) */}
       {activeEnquiry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] flex flex-col">
-            {/* Modal Header */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-150 max-h-[92vh] flex flex-col">
+            {/* Modal Top */}
             <div className="flex items-start justify-between pb-4 border-b border-gray-100">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-xs font-bold text-[#174B35] bg-[#E8F0E3] px-2.5 py-0.5 rounded-full">
-                    {activeEnquiry.id}
-                  </span>
-                  {renderStatusBadge(getNormalizedStatus(activeEnquiry))}
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                  <img
+                    src={getThumbnailSrc(activeEnquiry)}
+                    alt={activeEnquiry.productTitle || "Product"}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">
-                  {activeEnquiry.productTitle || activeEnquiry.commodity}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Supplier: <strong>{activeEnquiry.sellerName}</strong> • {activeEnquiry.sellerDistrict}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {activeEnquiry.productTitle || activeEnquiry.commodity}
+                    </h3>
+                    {getNormalizedStatus(activeEnquiry) === "Answered" ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF5ED] text-[#174B35]">
+                        Answered
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF7ED] text-[#C2410C]">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Seller: <strong>{activeEnquiry.sellerName || "AgriFresh Exports"}</strong> • {activeEnquiry.sellerDistrict || "Tamil Nadu"}
+                  </p>
+                </div>
               </div>
+
               <button
                 type="button"
                 onClick={() => setActiveEnquiry(null)}
@@ -434,90 +481,82 @@ function BuyerEnquiriesContent() {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto py-5 space-y-5 pr-1 text-xs">
-              {/* Submitted Parameters Summary Grid */}
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+            <div className="flex-1 overflow-y-auto py-5 space-y-4 text-xs pr-1">
+              {/* Enquiry Terms */}
+              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200/80 space-y-2">
                 <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                  Commercial Terms Submitted
+                  Enquiry Details
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <span className="text-gray-500 block">Requested Volume</span>
-                    <strong className="text-gray-900">{activeEnquiry.requestedQuantity} {activeEnquiry.unitRequested || "kg"}</strong>
+                    <span className="text-gray-400 block">Requested Volume</span>
+                    <strong className="text-gray-900 font-semibold">
+                      {activeEnquiry.requestedQuantity} {activeEnquiry.unitRequested || activeEnquiry.unit || "kg"}
+                    </strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Quality Grade</span>
-                    <strong className="text-gray-900">{activeEnquiry.grade || "Grade A (Premium)"}</strong>
+                    <span className="text-gray-400 block">Grade</span>
+                    <strong className="text-gray-900 font-semibold">
+                      {activeEnquiry.grade || "Grade A (Premium)"}
+                    </strong>
                   </div>
                   <div>
-                    <span className="text-gray-500 block">Packaging</span>
-                    <strong className="text-gray-900">{activeEnquiry.packaging || "Standard Commercial Bags"}</strong>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Delivery Destination</span>
-                    <strong className="text-gray-900">{activeEnquiry.deliveryLocation || "Tamil Nadu"}</strong>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Needed-by Date</span>
-                    <strong className="text-gray-900">{activeEnquiry.neededByDate || "Standard Mandi Schedule"}</strong>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Target Price</span>
-                    <strong className="text-gray-900">{activeEnquiry.targetPrice ? `₹${activeEnquiry.targetPrice}` : "Fair Mandi Rate"}</strong>
+                    <span className="text-gray-400 block">Delivery Location</span>
+                    <strong className="text-gray-900 font-semibold">
+                      {activeEnquiry.deliveryLocation || "Tamil Nadu"}
+                    </strong>
                   </div>
                 </div>
-
-                {activeEnquiry.additionalRequirements && (
-                  <div className="pt-2 border-t border-gray-200">
-                    <span className="text-gray-500 block">Notes / Technical Requirements:</span>
-                    <p className="text-gray-700 italic mt-0.5">{activeEnquiry.additionalRequirements}</p>
-                  </div>
-                )}
               </div>
 
-              {/* Message Thread History */}
+              {/* Message Thread */}
               <div className="space-y-3">
                 <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                  Conversation &amp; Supplier Response Thread
+                  Communication Thread
                 </h4>
 
                 <div className="space-y-2.5">
-                  {Array.isArray(activeEnquiry.messages) && activeEnquiry.messages.map((msg, idx) => {
-                    const isBuyerMsg = msg.senderRole === "BUYER";
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-3.5 rounded-2xl border ${
-                          isBuyerMsg
-                            ? "bg-[#E8F0E3]/60 border-emerald-200 ml-4 sm:ml-8"
-                            : "bg-white border-gray-200 mr-4 sm:mr-8 shadow-xs"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-100/80 mb-1.5">
-                          <span className="font-bold text-gray-900">
-                            {isBuyerMsg ? "You (Buyer)" : msg.senderName || activeEnquiry.sellerName}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {msg.formattedTime || new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-gray-700 leading-relaxed">{msg.message}</p>
-                        {msg.quotedPrice && (
-                          <div className="mt-2 p-2 bg-emerald-100/70 rounded-lg text-[11px] font-bold text-[#174B35]">
-                            Quoted Mandi Price: ₹{msg.quotedPrice} per {msg.unit || "kg"}
+                  {Array.isArray(activeEnquiry.messages) &&
+                    activeEnquiry.messages.map((msg, idx) => {
+                      const isBuyerMsg = msg.senderRole === "BUYER";
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-3.5 rounded-2xl border ${
+                            isBuyerMsg
+                              ? "bg-[#EAF5ED]/70 border-emerald-200 ml-4 sm:ml-8"
+                              : "bg-white border-gray-200 mr-4 sm:mr-8 shadow-2xs"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between pb-1.5 border-b border-gray-100 mb-1.5">
+                            <span className="font-bold text-gray-900">
+                              {isBuyerMsg ? "You (Buyer)" : msg.senderName || activeEnquiry.sellerName}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              {msg.formattedTime ||
+                                new Date(msg.timestamp).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          <p className="text-gray-700 leading-relaxed text-xs">{msg.message}</p>
+                          {msg.quotedPrice && (
+                            <div className="mt-2 p-2 bg-emerald-100/70 rounded-lg text-[11px] font-bold text-[#174B35]">
+                              Quoted Price: ₹{msg.quotedPrice} per {msg.unit || "kg"}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
-              {/* Reply Box (if not closed) */}
+              {/* Follow-up reply box */}
               {activeEnquiry.status !== "CLOSED" ? (
                 <form onSubmit={handleSendFollowUp} className="space-y-2.5 pt-2 border-t border-gray-100">
                   <label className="block text-xs font-bold text-gray-800">
-                    Send Reply / Counter-Offer to Supplier:
+                    Send Follow-up Message to Supplier:
                   </label>
                   {replyError && (
                     <div className="text-xs text-red-600 font-semibold">{replyError}</div>
@@ -526,14 +565,14 @@ function BuyerEnquiriesContent() {
                     rows={2}
                     value={followUpMessage}
                     onChange={(e) => setFollowUpMessage(e.target.value)}
-                    placeholder="Type your message, confirm delivery dates, or ask for transport terms..."
+                    placeholder="Type your reply, negotiate price, or confirm dispatch schedule..."
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#174B35]"
                   />
                   <div className="flex items-center justify-between">
                     <button
                       type="button"
                       onClick={handleCloseEnquiry}
-                      className="text-xs text-gray-500 hover:text-red-600 hover:underline cursor-pointer"
+                      className="text-xs text-gray-400 hover:text-red-600 hover:underline cursor-pointer"
                     >
                       Mark as Closed
                     </button>
@@ -548,17 +587,19 @@ function BuyerEnquiriesContent() {
                 </form>
               ) : (
                 <div className="p-3 bg-gray-50 rounded-xl text-center text-gray-500 text-xs font-medium">
-                  This enquiry thread has been marked as closed.
+                  This enquiry thread has been closed.
                 </div>
               )}
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Bottom Actions */}
             <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
-                  const sup = SELLER_DIRECTORY.find((s) => s.id === activeEnquiry.sellerId || s.name === activeEnquiry.sellerName);
+                  const sup = SELLER_DIRECTORY.find(
+                    (s) => s.id === activeEnquiry.sellerId || s.name === activeEnquiry.sellerName
+                  );
                   setSelectedSupplierForModal(
                     sup || {
                       id: activeEnquiry.sellerId,
@@ -571,8 +612,9 @@ function BuyerEnquiriesContent() {
                 }}
                 className="text-xs font-bold text-[#174B35] hover:underline cursor-pointer"
               >
-                View Supplier Contact &rarr;
+                View Seller Profile &rarr;
               </button>
+
               <button
                 type="button"
                 onClick={() => setActiveEnquiry(null)}
@@ -585,10 +627,10 @@ function BuyerEnquiriesContent() {
         </div>
       )}
 
-      {/* Mobile Bottom Tab Bar */}
+      {/* Mobile Bottom Navigation */}
       <BottomTabBar />
 
-      {/* Modals */}
+      {/* Supporting Modals */}
       <SupplierProfileModal
         isOpen={!!selectedSupplierForModal}
         supplier={selectedSupplierForModal}

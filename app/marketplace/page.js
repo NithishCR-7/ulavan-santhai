@@ -7,10 +7,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import BuyerHeader from "@/components/marketplace/BuyerHeader";
 import BottomTabBar from "@/components/marketplace/BottomTabBar";
 import ProductCard from "@/components/marketplace/ProductCard";
-import ProductRow from "@/components/marketplace/ProductRow";
 import FilterPanel from "@/components/marketplace/FilterPanel";
 import FilterChips from "@/components/marketplace/FilterChips";
-import SellerAccessModal, { SellerAccessCard } from "@/components/marketplace/SellerAccessModal";
+import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
 import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
 import SupplierProfileModal from "@/components/marketplace/SupplierProfileModal";
 import SendEnquiryModal from "@/components/marketplace/SendEnquiryModal";
@@ -19,16 +18,17 @@ import HelpModal from "@/components/marketplace/HelpModal";
 import {
   BRD_CATEGORIES,
   SELLER_DIRECTORY,
-  MOQ_RANGES,
+  B2B_CATALOG_PRODUCTS,
 } from "@/data/marketplaceCatalog";
 import { getMarketplaceProducts } from "@/services/marketplaceApi";
 import { useSessionUser } from "@/services/sessionAuth";
+import { getLocalBuyerAccessState } from "@/services/sellerAccessApi";
 
 export default function BuyerMarketplacePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+        <div className="min-h-screen bg-[#F8FAF7] flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
           Loading Ulavan Santhai Agricultural Marketplace...
         </div>
       }
@@ -38,20 +38,29 @@ export default function BuyerMarketplacePage() {
   );
 }
 
+const BUYER_CLASSIFICATIONS = [
+  { id: "Food Processor", label: "Food Processor", icon: "🍱" },
+  { id: "Individual", label: "Individual", icon: "👤" },
+  { id: "Business", label: "Business", icon: "🏢" },
+  { id: "Manufacturer", label: "Manufacturer", icon: "🏭" },
+  { id: "Bakery or Food Business", label: "Bakery or Food Business", icon: "🥖" },
+  { id: "Reseller", label: "Reseller", icon: "🏪" },
+  { id: "Other", label: "Other", icon: "📦" },
+];
+
 function MarketplaceApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionUser = useSessionUser();
 
   // URL search params
-  const paramSearch = searchParams.get("search") || "";
+  const paramSearch = searchParams.get("search") || searchParams.get("q") || "";
   const paramCat = searchParams.get("category") || "";
-  const paramSub = searchParams.get("sub") || "";
-  const paramView = searchParams.get("view") || "";
+  const paramSub = searchParams.get("sub") || searchParams.get("subcategory") || "";
 
-  // Products from catalog + local sellers
-  const [allProducts, setAllProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Products from catalog
+  const [allProducts, setAllProducts] = useState(B2B_CATALOG_PRODUCTS);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState(paramSearch);
@@ -64,16 +73,33 @@ function MarketplaceApp() {
   const [selectedMoq, setSelectedMoq] = useState("all");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
-  // Sorting & Layout
-  const [sortBy, setSortBy] = useState("RELEVANCE"); // "RELEVANCE" | "RECENT" | "PRICE_ASC" | "PRICE_DESC"
-  const [layoutMode, setLayoutMode] = useState("grid"); // "grid" | "list"
+  // Sorting
+  const [sortBy, setSortBy] = useState("RELEVANCE");
 
-  // Home Popular Tabs State
-  const [popularTab, setPopularTab] = useState("All");
+  // Buyer Classification Personalisation (7 types from BRD)
+  const [buyerClassification, setBuyerClassification] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored =
+          sessionStorage.getItem("ulavan_buyer_classification") ||
+          localStorage.getItem("ulavan_buyer_classification");
+        if (stored) return stored;
+        const userRaw = sessionStorage.getItem("ulavan_user");
+        if (userRaw) {
+          const u = JSON.parse(userRaw);
+          if (u.buyerType) return u.buyerType;
+        }
+      } catch {}
+    }
+    return "Food Processor"; // Default shown in Screenshot 6
+  });
+  const [isClassificationDropdownOpen, setIsClassificationDropdownOpen] = useState(false);
 
-  // User Saved & Recent state
+  // Seller access quota state
+  const [quotaRemaining, setQuotaRemaining] = useState(7); // "7 of 10" in Screenshot 6
+
+  // User Saved & Wishlist state
   const [savedIds, setSavedIds] = useState([]);
-  const [recentIds, setRecentIds] = useState([]);
 
   // Modals state
   const [isSellerAccessOpen, setIsSellerAccessOpen] = useState(false);
@@ -105,30 +131,40 @@ function MarketplaceApp() {
           }
         }
       }
-    } catch {
-      // safe fallback
-    }
+    } catch {}
   }, [router]);
 
-  // Load products on mount
+  // Load live catalog products on mount
   useEffect(() => {
     let isMounted = true;
     async function load() {
       try {
         const res = await getMarketplaceProducts();
-        if (isMounted && res.success && Array.isArray(res.data)) {
+        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          // Merge custom created products with B2B_CATALOG_PRODUCTS
           setAllProducts(res.data);
         }
       } catch (err) {
         console.error("Failed to load catalog products:", err);
-      } finally {
-        if (isMounted) setIsLoading(false);
       }
     }
     load();
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  // Sync quota from local entitlement state
+  useEffect(() => {
+    const updateQuota = () => {
+      const state = getLocalBuyerAccessState();
+      if (state && typeof state.quotaRemaining === "number") {
+        setQuotaRemaining(state.quotaRemaining);
+      }
+    };
+    updateQuota();
+    window.addEventListener("ulavan_access_changed", updateQuota);
+    return () => window.removeEventListener("ulavan_access_changed", updateQuota);
   }, []);
 
   // Sync state when URL params change
@@ -138,8 +174,8 @@ function MarketplaceApp() {
     if (paramSub !== selectedSubcategory) setSelectedSubcategory(paramSub);
   }, [paramSearch, paramCat, paramSub]);
 
-  // Load saved & recent items from localStorage
-  const loadStoredData = () => {
+  // Load saved items from localStorage
+  const loadSavedData = () => {
     try {
       const rawSaved = localStorage.getItem("ulavan_saved_products");
       if (rawSaved) {
@@ -148,22 +184,17 @@ function MarketplaceApp() {
           setSavedIds(parsed.map((p) => (typeof p === "string" ? p : p.id)));
         }
       }
-      const rawRecent = localStorage.getItem("ulavan_recent_views");
-      if (rawRecent) {
-        const parsed = JSON.parse(rawRecent);
-        if (Array.isArray(parsed)) setRecentIds(parsed);
-      }
-    } catch (e) {}
+    } catch {}
   };
 
   useEffect(() => {
-    loadStoredData();
-    const handleSavedChanged = () => loadStoredData();
+    loadSavedData();
+    const handleSavedChanged = () => loadSavedData();
     window.addEventListener("ulavan_saved_changed", handleSavedChanged);
     return () => window.removeEventListener("ulavan_saved_changed", handleSavedChanged);
   }, []);
 
-  // Toggle Save Bookmark
+  // Toggle Save / Wishlist
   const handleToggleSave = (prod) => {
     try {
       const rawSaved = localStorage.getItem("ulavan_saved_products");
@@ -180,40 +211,44 @@ function MarketplaceApp() {
       localStorage.setItem("ulavan_saved_products", JSON.stringify(list));
       setSavedIds(list.map((p) => (typeof p === "string" ? p : p.id)));
       window.dispatchEvent(new Event("ulavan_saved_changed"));
-    } catch (e) {}
+    } catch {}
   };
 
-  // Determine whether we are in "Home" view or "Explore / Listing" view
-  const isExploreMode = useMemo(() => {
-    if (paramView === "explore") return true;
-    if (searchQuery.trim().length > 0) return true;
-    if (selectedCategory && selectedCategory !== "All Categories") return true;
-    if (selectedSubcategory) return true;
-    if (selectedDistricts.length > 0) return true;
-    if (selectedGrades.length > 0) return true;
-    if (selectedAvailabilities.length > 0) return true;
-    if (selectedOrganic.length > 0) return true;
-    if (selectedMoq !== "all") return true;
-    if (verifiedOnly) return true;
-    return false;
-  }, [
-    paramView,
-    searchQuery,
-    selectedCategory,
-    selectedSubcategory,
-    selectedDistricts,
-    selectedGrades,
-    selectedAvailabilities,
-    selectedOrganic,
-    selectedMoq,
-    verifiedOnly,
-  ]);
+  // Change Buyer Classification
+  const handleSelectClassification = (typeId) => {
+    setBuyerClassification(typeId);
+    setIsClassificationDropdownOpen(false);
+    try {
+      sessionStorage.setItem("ulavan_buyer_classification", typeId);
+      localStorage.setItem("ulavan_buyer_classification", typeId);
+      const userRaw = sessionStorage.getItem("ulavan_user");
+      if (userRaw) {
+        const u = JSON.parse(userRaw);
+        u.buyerType = typeId;
+        sessionStorage.setItem("ulavan_user", JSON.stringify(u));
+      }
+    } catch {}
+  };
 
-  // Filtering Logic
+  // Clear all filters
+  const handleClearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("");
+    setSelectedSubcategory("");
+    setSelectedDistricts([]);
+    setSelectedGrades([]);
+    setSelectedAvailabilities([]);
+    setSelectedOrganic([]);
+    setSelectedMoq("all");
+    setVerifiedOnly(false);
+    router.replace("/marketplace");
+  };
+
+  // Filter & Personalisation Logic
   const filteredProducts = useMemo(() => {
     let result = [...allProducts];
 
-    // 1. Text Search (title, commodity, variety, sellerName, origin, description, specs)
+    // 1. Text Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((p) => {
@@ -233,32 +268,34 @@ function MarketplaceApp() {
       result = result.filter(
         (p) =>
           p.category?.toLowerCase() === selectedCategory.toLowerCase() ||
-          p.categoryId === selectedCategory
+          p.categoryId === selectedCategory ||
+          p.displayCategory?.toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
-    // 3. Subcategory
+    // 3. Subcategory / Product Type
     if (selectedSubcategory) {
       result = result.filter(
-        (p) => p.subcategory?.toLowerCase() === selectedSubcategory.toLowerCase()
+        (p) =>
+          p.subcategory?.toLowerCase() === selectedSubcategory.toLowerCase() ||
+          p.displayCategory?.toLowerCase() === selectedSubcategory.toLowerCase()
       );
     }
 
-    // 4. District
+    // 4. District / Origin
     if (selectedDistricts.length > 0) {
       result = result.filter((p) =>
-        selectedDistricts.some(
-          (d) =>
-            p.originDistrict?.toLowerCase() === d.toLowerCase() ||
-            p.district?.toLowerCase() === d.toLowerCase()
-        )
+        selectedDistricts.some((d) => {
+          const origin = (p.originDistrict || p.originState || p.district || "").toLowerCase();
+          return origin.includes(d.toLowerCase());
+        })
       );
     }
 
     // 5. Grade
     if (selectedGrades.length > 0) {
       result = result.filter((p) =>
-        selectedGrades.some((g) => p.grade?.toLowerCase().includes(g.toLowerCase()))
+        selectedGrades.some((g) => (p.grade || "").toLowerCase().includes(g.toLowerCase()))
       );
     }
 
@@ -269,7 +306,7 @@ function MarketplaceApp() {
       );
     }
 
-    // 7. Organic
+    // 7. Organic / Farming Type
     if (selectedOrganic.length > 0) {
       result = result.filter((p) =>
         selectedOrganic.some((o) =>
@@ -281,7 +318,7 @@ function MarketplaceApp() {
     // 8. MOQ Range
     if (selectedMoq && selectedMoq !== "all") {
       result = result.filter((p) => {
-        const moq = Number(p.moq) || 0;
+        const moq = Number(p.minOrderQuantity || p.moq) || 0;
         if (selectedMoq === "< 100 kg") return moq < 100;
         if (selectedMoq === "100 - 500 kg") return moq >= 100 && moq <= 500;
         if (selectedMoq === "500 kg - 2 MT") return moq > 500 && moq <= 2000;
@@ -290,18 +327,45 @@ function MarketplaceApp() {
       });
     }
 
-    // 9. Verified Suppliers Only
+    // 9. Verified Only
     if (verifiedOnly) {
       result = result.filter((p) => p.sellerVerified === true || p.verified === true);
     }
 
-    // Sort
+    // 10. Personalisation based on Buyer Classification
+    if (buyerClassification === "Food Processor") {
+      // Prioritize fresh produce, pulses, spices, flours
+      result.sort((a, b) => {
+        const aBoost = ["Pulses", "Vegetables", "Spices", "Processed Foods"].includes(a.displayCategory || a.subcategory) ? -1 : 1;
+        const bBoost = ["Pulses", "Vegetables", "Spices", "Processed Foods"].includes(b.displayCategory || b.subcategory) ? -1 : 1;
+        return aBoost - bBoost;
+      });
+    } else if (buyerClassification === "Manufacturer") {
+      // Prioritize raw materials, bulk milling grains, copra
+      result.sort((a, b) => {
+        const aBoost = a.category === "Raw Materials" || a.subcategory?.includes("Paddy") ? -1 : 1;
+        const bBoost = b.category === "Raw Materials" || b.subcategory?.includes("Paddy") ? -1 : 1;
+        return aBoost - bBoost;
+      });
+    } else if (buyerClassification === "Bakery or Food Business") {
+      // Prioritize flours, starches, cold-pressed oils
+      result.sort((a, b) => {
+        const aBoost = a.title?.includes("Flour") || a.title?.includes("Oil") || a.title?.includes("Sago") ? -1 : 1;
+        const bBoost = b.title?.includes("Flour") || b.title?.includes("Oil") || b.title?.includes("Sago") ? -1 : 1;
+        return aBoost - bBoost;
+      });
+    } else if (buyerClassification === "Individual") {
+      // Prioritize lower MOQ items
+      result.sort((a, b) => (Number(a.minOrderQuantity) || 0) - (Number(b.minOrderQuantity) || 0));
+    }
+
+    // 11. Sorting
     if (sortBy === "RECENT") {
-      result.sort((a, b) => new Date(b.lastUpdated || 0) - new Date(a.lastUpdated || 0));
+      result.sort((a, b) => new Date(b.harvestDate || b.lastUpdated || 0) - new Date(a.harvestDate || a.lastUpdated || 0));
     } else if (sortBy === "PRICE_ASC") {
-      result.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+      result.sort((a, b) => (Number(a.pricePerUnit || a.price) || 0) - (Number(b.pricePerUnit || b.price) || 0));
     } else if (sortBy === "PRICE_DESC") {
-      result.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      result.sort((a, b) => (Number(b.pricePerUnit || b.price) || 0) - (Number(a.pricePerUnit || a.price) || 0));
     }
 
     return result;
@@ -316,760 +380,189 @@ function MarketplaceApp() {
     selectedOrganic,
     selectedMoq,
     verifiedOnly,
+    buyerClassification,
     sortBy,
   ]);
 
-  // Matching suppliers for search query
-  const matchingSuppliers = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase().trim();
-    return SELLER_DIRECTORY.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.district.toLowerCase().includes(q) ||
-        s.commodities?.some((c) => c.toLowerCase().includes(q))
-    );
-  }, [searchQuery]);
-
-  // Popular products tab filtered list
-  const popularProducts = useMemo(() => {
-    if (popularTab === "All") return allProducts.slice(0, 8);
-    return allProducts
-      .filter((p) => p.category?.toLowerCase() === popularTab.toLowerCase())
-      .slice(0, 8);
-  }, [allProducts, popularTab]);
-
-  // Recommended products for this buyer
-  const recommendedProducts = useMemo(() => {
-    const interests = sessionUser?.categoriesOfInterest || [
-      "Agricultural Products",
-      "Organic Products",
-    ];
-    return allProducts
-      .filter((p) =>
-        interests.some((cat) => p.category?.toLowerCase().includes(cat.toLowerCase()))
-      )
-      .slice(0, 6);
-  }, [allProducts, sessionUser]);
-
-  // Recent products from localStorage
-  const recentProducts = useMemo(() => {
-    if (recentIds.length === 0) return [];
-    return recentIds
-      .map((id) => allProducts.find((p) => p.id === id))
-      .filter(Boolean)
-      .slice(0, 4);
-  }, [allProducts, recentIds]);
-
-  // Active BRD Category object (if selected)
-  const activeBrdCategory = useMemo(() => {
-    return BRD_CATEGORIES.find(
-      (c) => c.name.toLowerCase() === selectedCategory?.toLowerCase() || c.id === selectedCategory
-    );
-  }, [selectedCategory]);
-
-  // Clear all filters action
-  const handleClearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory("");
-    setSelectedSubcategory("");
-    setSelectedDistricts([]);
-    setSelectedGrades([]);
-    setSelectedAvailabilities([]);
-    setSelectedOrganic([]);
-    setSelectedMoq("all");
-    setVerifiedOnly(false);
-    router.replace("/marketplace");
-  };
-
-  // Switch to Explore view with a given category
-  const handleSelectCategory = (catName) => {
-    setSelectedCategory(catName);
-    setSelectedSubcategory("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Header Search Handler
-  const handleHeaderSearch = (query, cat) => {
-    setSearchQuery(query);
-    if (cat && cat !== "All Categories") {
-      setSelectedCategory(cat);
-    } else if (cat === "All Categories") {
-      setSelectedCategory("");
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const currentClassificationObj =
+    BUYER_CLASSIFICATIONS.find((c) => c.id === buyerClassification) || BUYER_CLASSIFICATIONS[0];
 
   return (
-    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
-      {/* 1. Header (Sticky 2-row header replacing left sidebar) */}
+    <div className="min-h-screen bg-[#F8FAF7] flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
+      {/* 1. Top Navbar matching Screenshot 6 */}
       <BuyerHeader
         initialSearch={searchQuery}
         initialCategory={selectedCategory || "All Categories"}
-        onSearch={handleHeaderSearch}
+        onSearch={(q) => {
+          setSearchQuery(q);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
         onOpenPostRequirement={() => setIsPostRequirementOpen(true)}
         onOpenSellerAccess={() => setIsSellerAccessOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-5">
-        {/* ======================================================== */}
-        {/* MODE A: HOME VIEW (Default when no filters / search)     */}
-        {/* ======================================================== */}
-        {!isExploreMode ? (
-          <div className="space-y-10 sm:space-y-12 animate-in fade-in duration-200">
-            {/* 1. Hero Banner */}
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#174B35] via-[#1F4D36] to-[#0E2E20] text-white p-6 sm:p-10 lg:p-12 shadow-xl border border-emerald-900/20">
-              {/* Subtle background decoration */}
-              <div
-                className="absolute inset-0 z-0 bg-cover bg-center opacity-15 mix-blend-overlay"
-                style={{ backgroundImage: "url('/images/hero-aerial-fields.jpg')" }}
-              />
-              <div className="absolute -right-20 -bottom-20 w-96 h-96 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
+      {/* 2. Hero Banner matching Screenshot 6 */}
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-2">
+        <div className="relative rounded-2xl overflow-hidden shadow-sm h-36 sm:h-44 md:h-52 flex items-center px-6 sm:px-10 lg:px-12 text-white">
+          {/* Panoramic agricultural landscape background image */}
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: "url('/images/hero-aerial-fields.jpg')",
+            }}
+          />
+          {/* Subtle gradient overlay to enhance readability */}
+          <div className="absolute inset-0 bg-linear-to-r from-[#174B35]/85 via-[#174B35]/50 to-transparent" />
 
-              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-emerald-200 text-xs font-bold tracking-wide">
-                    <span>🌾 Direct Mandi Procurement</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>38 Districts of Tamil Nadu</span>
-                  </div>
+          {/* Banner Text Content */}
+          <div className="relative z-10 max-w-xl space-y-1.5 sm:space-y-2">
+            <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight drop-shadow-xs">
+              Source quality agricultural products
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100 font-medium drop-shadow-xs">
+              Discover quality agricultural products &amp; raw materials direct from verified producers
+            </p>
+          </div>
+        </div>
+      </div>
 
-                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-                    Tamil Nadu&apos;s B2B Agricultural Mandi &amp; Producer Exchange
-                  </h1>
+      {/* 3. Main 2-Column Section (Sidebar + Product Grid) matching Screenshot 6 */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* ======================================================== */}
+          {/* LEFT COLUMN (3 Cols): Categories + Filters Sidebar       */}
+          {/* ======================================================== */}
+          <aside className="hidden lg:block lg:col-span-3 space-y-4 sticky top-20">
+            <FilterPanel
+              filters={{
+                category: selectedCategory,
+                categories: selectedCategory ? [selectedCategory] : [],
+                subcategories: selectedSubcategory ? [selectedSubcategory] : [],
+                districts: selectedDistricts,
+                grades: selectedGrades,
+                availabilities: selectedAvailabilities,
+                organicStatuses: selectedOrganic,
+                moqRange: selectedMoq,
+              }}
+              onFilterChange={(field, val) => {
+                if (field === "categories" || field === "category") {
+                  setSelectedCategory(Array.isArray(val) ? val[0] || "" : val);
+                  setSelectedSubcategory("");
+                } else if (field === "subcategories") {
+                  setSelectedSubcategory(val[0] || "");
+                } else if (field === "districts") {
+                  setSelectedDistricts(val);
+                } else if (field === "grades") {
+                  setSelectedGrades(val);
+                } else if (field === "availabilities") {
+                  setSelectedAvailabilities(val);
+                } else if (field === "organicStatuses") {
+                  setSelectedOrganic(val);
+                } else if (field === "moqRange") {
+                  setSelectedMoq(val);
+                }
+              }}
+              onClearFilters={handleClearAllFilters}
+            />
+          </aside>
 
-                  <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-xl">
-                    Discover bulk milling lots, export-grade spices, certified organic grains, and farm raw materials direct from verified growers and FPOs with zero middleman brokerage.
-                  </p>
+          {/* ======================================================== */}
+          {/* RIGHT COLUMN (9 Cols): Top Bar + Product Grid + Notice   */}
+          {/* ======================================================== */}
+          <div className="lg:col-span-9 space-y-5">
+            {/* Top Toolbar matching Screenshot 6 */}
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+              {/* Left: Heading + Buyer Type Selector + Seller Access Pill */}
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  Marketplace
+                </h2>
 
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory("All Categories");
-                        router.push("/marketplace?view=explore");
-                      }}
-                      className="px-6 py-3 rounded-2xl bg-white text-[#174B35] font-extrabold text-xs sm:text-sm shadow-md hover:bg-emerald-50 hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      <span>Explore Products</span>
-                      <span>&rarr;</span>
-                    </button>
+                {/* Buyer Classification Dropdown Pill matching Screenshot 6 [🍱 Food Processor ▾] */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsClassificationDropdownOpen(!isClassificationDropdownOpen)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold text-gray-800 shadow-2xs transition-colors cursor-pointer"
+                    title="Change buyer procurement classification"
+                  >
+                    <span>{currentClassificationObj.icon}</span>
+                    <span>{currentClassificationObj.label}</span>
+                    <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsPostRequirementOpen(true)}
-                      className="px-5 py-3 rounded-2xl border-2 border-white/60 hover:border-white text-white font-bold text-xs sm:text-sm hover:bg-white/10 transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      <span>Post a Requirement</span>
-                      <span>📋</span>
-                    </button>
-                  </div>
+                  {/* Dropdown Menu for 7 Buyer Types */}
+                  {isClassificationDropdownOpen && (
+                    <div className="absolute left-0 mt-1.5 w-56 bg-white rounded-2xl shadow-xl border border-gray-200 p-1.5 z-40 text-xs animate-in fade-in duration-100">
+                      <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        Buyer Classification
+                      </div>
+                      {BUYER_CLASSIFICATIONS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleSelectClassification(c.id)}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2 cursor-pointer transition-colors ${
+                            buyerClassification === c.id
+                              ? "bg-emerald-50 text-[#174B35] font-bold"
+                              : "text-gray-700 hover:bg-gray-50 font-medium"
+                          }`}
+                        >
+                          <span>{c.icon}</span>
+                          <span className="flex-1">{c.label}</span>
+                          {buyerClassification === c.id && <span className="text-[#174B35] font-bold">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Right Hero Card: Seller Access Quota Widget */}
-                <div className="lg:col-span-5">
-                  <SellerAccessCard onOpenDetails={() => setIsSellerAccessOpen(true)} />
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Trust Strip (Real facts, no fake stats) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#174B35] flex items-center justify-center text-lg shrink-0">
-                  🚜
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 leading-tight">Direct from Farm</h4>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Verified FPOs &amp; growers in TN</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#174B35] flex items-center justify-center text-lg shrink-0">
-                  🌱
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 leading-tight">Organic Where Certified</h4>
-                  <p className="text-[11px] text-gray-500 mt-0.5">NPOP &amp; Jaivik Bharat documented</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#174B35] flex items-center justify-center text-lg shrink-0">
-                  📦
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 leading-tight">B2B Minimum Order Qty</h4>
-                  <p className="text-[11px] text-gray-500 mt-0.5">Bulk commercial packaging</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#174B35] flex items-center justify-center text-lg shrink-0">
-                  🤝
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 leading-tight">Enquiry-Based Terms</h4>
-                  <p className="text-[11px] text-gray-500 mt-0.5">0% middleman brokerage</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Shop by Category (The 4 BRD Categories) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
-                    Shop by Category
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Explore the 4 verified agricultural classification tiers from the BRD
-                  </p>
-                </div>
+                {/* Seller Access Pill matching Screenshot 6: [✓ Seller enquiries remaining: 7 of 10 ℹ] */}
                 <button
                   type="button"
-                  onClick={() => router.push("/marketplace?view=explore")}
-                  className="text-xs font-bold text-[#174B35] hover:text-[#103A29] hover:underline cursor-pointer"
+                  onClick={() => setIsSellerAccessOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-xs font-bold hover:bg-emerald-100/80 transition-colors cursor-pointer"
+                  title="Click to view seller access rules & remaining quota"
                 >
-                  View All Products &rarr;
+                  <span className="text-emerald-700">✓</span>
+                  <span>Seller enquiries remaining: {quotaRemaining} of 10</span>
+                  <span className="text-emerald-600 text-[11px] font-bold ml-0.5">ℹ</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {BRD_CATEGORIES.map((cat) => {
-                  const catCount = allProducts.filter(
-                    (p) => p.category?.toLowerCase() === cat.name.toLowerCase()
-                  ).length;
-                  return (
-                    <div
-                      key={cat.id}
-                      onClick={() => handleSelectCategory(cat.name)}
-                      className="group p-5 rounded-3xl bg-white border border-gray-200/90 shadow-2xs hover:shadow-md hover:border-[#174B35]/40 transition-all cursor-pointer flex flex-col justify-between space-y-4"
-                    >
-                      <div className="space-y-2">
-                        <div className="w-12 h-12 rounded-2xl bg-[#F5F5EB] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                          {cat.icon}
-                        </div>
-                        <h3 className="text-base font-extrabold text-gray-900 group-hover:text-[#174B35] transition-colors leading-snug">
-                          {cat.name}
-                        </h3>
-                        <div className="text-[11px] font-semibold text-emerald-800">
-                          {cat.tamilName}
-                        </div>
-                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                          {cat.description}
-                        </p>
-                      </div>
+              {/* Right: Sort by Dropdown */}
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                {/* Mobile Filter Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFilterOpen(true)}
+                  className="lg:hidden px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-700 flex items-center gap-1.5 shadow-2xs"
+                >
+                  <span>⚙️ Filters</span>
+                </button>
 
-                      <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
-                        <span className="font-bold text-[#174B35] bg-[#E8F0E3] px-2.5 py-0.5 rounded-full">
-                          {catCount} active lots
-                        </span>
-                        <span className="font-bold text-gray-400 group-hover:text-[#174B35] group-hover:translate-x-1 transition-all">
-                          Browse &rarr;
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 4. Continue Where You Left Off (if user has viewed products) */}
-            {recentProducts.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">
-                      Continue Where You Left Off
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Recently inspected agricultural lots
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      localStorage.removeItem("ulavan_recent_views");
-                      setRecentIds([]);
-                    }}
-                    className="text-xs text-gray-400 hover:text-red-600 hover:underline cursor-pointer"
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-gray-500 font-medium">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-800 bg-white outline-none cursor-pointer hover:border-gray-400 focus:border-[#174B35]"
                   >
-                    Clear history
-                  </button>
+                    <option value="RELEVANCE">Relevance</option>
+                    <option value="RECENT">Recently Added</option>
+                    <option value="PRICE_ASC">Price: Low to High</option>
+                    <option value="PRICE_DESC">Price: High to Low</option>
+                  </select>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {recentProducts.map((prod) => (
-                    <ProductCard
-                      key={prod.id}
-                      product={prod}
-                      isSaved={savedIds.includes(prod.id)}
-                      onToggleSave={handleToggleSave}
-                      onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                      onViewSupplier={(p) => {
-                        const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                        setSelectedSupplierForModal(
-                          sup || {
-                            id: p.sellerId,
-                            name: p.sellerName,
-                            sellerType: "Verified Producer",
-                            district: p.originDistrict || p.district,
-                            verified: true,
-                          }
-                        );
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 5. Popular Products with Category Tabs */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
-                    Popular Commodities &amp; Lots
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    High-demand harvests direct from verified Tamil Nadu growing clusters
-                  </p>
-                </div>
-
-                {/* Category Filter Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                  {["All", "Agricultural Products", "Organic Products", "Agricultural Raw Materials"].map(
-                    (tab) => {
-                      const isActive = popularTab === tab;
-                      return (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setPopularTab(tab)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                            isActive
-                              ? "bg-[#174B35] text-white shadow-xs"
-                              : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          {tab === "Agricultural Products"
-                            ? "Agri Produce"
-                            : tab === "Agricultural Raw Materials"
-                            ? "Raw Materials"
-                            : tab}
-                        </button>
-                      );
-                    }
-                  )}
-                </div>
-              </div>
-
-              {/* Grid of Popular Products */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {popularProducts.map((prod) => (
-                  <ProductCard
-                    key={prod.id}
-                    product={prod}
-                    isSaved={savedIds.includes(prod.id)}
-                    onToggleSave={handleToggleSave}
-                    onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                    onViewSupplier={(p) => {
-                      const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                      setSelectedSupplierForModal(
-                        sup || {
-                          id: p.sellerId,
-                          name: p.sellerName,
-                          sellerType: "Verified Producer",
-                          district: p.originDistrict || p.district,
-                          verified: true,
-                        }
-                      );
-                    }}
-                  />
-                ))}
               </div>
             </div>
 
-            {/* 6. Recommended for your business */}
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-gray-900 tracking-tight">
-                  Recommended for {sessionUser?.businessName || "Your Procurement Desk"}
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Curated based on your verified business profile &amp; category preferences
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-                {recommendedProducts.map((prod) => (
-                  <ProductCard
-                    key={prod.id}
-                    product={prod}
-                    isSaved={savedIds.includes(prod.id)}
-                    onToggleSave={handleToggleSave}
-                    onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                    onViewSupplier={(p) => {
-                      const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                      setSelectedSupplierForModal(
-                        sup || {
-                          id: p.sellerId,
-                          name: p.sellerName,
-                          sellerType: "Verified Producer",
-                          district: p.originDistrict || p.district,
-                          verified: true,
-                        }
-                      );
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 7. Verified Suppliers Row */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
-                    Verified Tamil Nadu Producers &amp; FPOs
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Connect directly with registered grower societies and certified processing mills
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {SELLER_DIRECTORY.map((sup) => (
-                  <div
-                    key={sup.id}
-                    className="p-5 rounded-3xl bg-white border border-gray-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-11 h-11 rounded-2xl bg-[#E8F0E3] text-[#174B35] font-black flex items-center justify-center text-lg shrink-0">
-                            {sup.name.charAt(0)}
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-extrabold text-gray-900 leading-snug line-clamp-1">
-                              {sup.name}
-                            </h3>
-                            <span className="text-[11px] text-gray-500 block">
-                              {sup.district}, Tamil Nadu • Est. {sup.establishedYear}
-                            </span>
-                          </div>
-                        </div>
-                        {sup.verified && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
-                            ✓ Verified
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                        {sup.description}
-                      </p>
-
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {sup.commodities?.slice(0, 3).map((comm, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[10px] font-medium"
-                          >
-                            {comm}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <span className="text-xs text-gray-500 font-semibold">
-                        {sup.farmAcreage || "Direct Mandi"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSupplierForModal(sup)}
-                        className="px-3.5 py-1.5 rounded-xl border border-[#174B35] text-[#174B35] hover:bg-[#E8F0E3] text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        View Supplier
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 8. Post a Requirement Strip */}
-            <div className="rounded-3xl bg-linear-to-r from-emerald-50 via-[#E8F0E3] to-teal-50 border border-emerald-200/90 p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-5 shadow-2xs">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold text-[#174B35] tracking-wider uppercase bg-white/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
-                  Custom Lot Procurement
-                </span>
-                <h3 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight">
-                  Looking for a custom lot size, spice grade, or bulk contract?
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 max-w-xl">
-                  Post your buying requirement once. Verified suppliers across Tamil Nadu can review your parameters and respond directly with their mandi quotation.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsPostRequirementOpen(true)}
-                className="px-6 py-3 rounded-2xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs sm:text-sm font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap self-start sm:self-center"
-              >
-                Post Requirement &rarr;
-              </button>
-            </div>
-
-            {/* 9. Marketplace Footer */}
-            <footer className="pt-10 border-t border-gray-200 text-xs text-gray-500 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🌱</span>
-                    <span className="font-black text-base text-[#174B35]">Ulavan Santhai</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Tamil Nadu&apos;s B2B agricultural exchange connecting buyers with farmers, FPOs, and processing mills with 0% middleman brokerage.
-                  </p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 uppercase text-[11px] mb-2.5">
-                    BRD Categories
-                  </h4>
-                  <ul className="space-y-1.5">
-                    {BRD_CATEGORIES.map((cat) => (
-                      <li key={cat.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectCategory(cat.name)}
-                          className="hover:text-[#174B35] cursor-pointer"
-                        >
-                          {cat.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 uppercase text-[11px] mb-2.5">
-                    Trading Desk &amp; Policies
-                  </h4>
-                  <ul className="space-y-1.5">
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setIsSellerAccessOpen(true)}
-                        className="hover:text-[#174B35] cursor-pointer"
-                      >
-                        My Seller Access Quota
-                      </button>
-                    </li>
-                    <li>
-                      <Link href="/buyer/enquiries" className="hover:text-[#174B35]">
-                        My Enquiries Desk
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/marketplace/saved" className="hover:text-[#174B35]">
-                        Saved Produce Watchlist
-                      </Link>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        onClick={() => setIsHelpOpen(true)}
-                        className="hover:text-[#174B35] cursor-pointer"
-                      >
-                        Help &amp; FAQ
-                      </button>
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-gray-900 uppercase text-[11px] mb-2.5">
-                    Platform Guarantees
-                  </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Enquiry-based B2B model with verified FPO seller credentials. No consumer checkout, no hidden brokerage fees.
-                  </p>
-                  <div className="pt-2">
-                    <span className="inline-block px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-semibold">
-                      Tamil Nadu Agricultural Exchange
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
-                <p>&copy; 2026 Ulavan Santhai. Farm to Market. All rights reserved.</p>
-                <div className="flex items-center gap-4 text-gray-500">
-                  <span>Privacy Policy</span>
-                  <span>•</span>
-                  <span>Terms of Trade</span>
-                  <span>•</span>
-                  <span>Fair Trade Mandi Guidelines</span>
-                </div>
-              </div>
-            </footer>
-          </div>
-        ) : (
-          /* ======================================================== */
-          /* MODE B: EXPLORE / CATEGORY / SEARCH LISTING VIEW        */
-          /* ======================================================== */
-          <div className="space-y-5 animate-in fade-in duration-150">
-            {/* Category / Search Title Strip */}
-            <div className="bg-white rounded-3xl p-5 sm:p-7 border border-gray-200 shadow-2xs space-y-3">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                    <button
-                      type="button"
-                      onClick={() => handleClearAllFilters()}
-                      className="hover:text-[#174B35] font-semibold cursor-pointer"
-                    >
-                      Marketplace Home
-                    </button>
-                    <span>/</span>
-                    <span className="text-gray-800 font-bold">
-                      {selectedCategory || "Explore Products"}
-                    </span>
-                    {selectedSubcategory && (
-                      <>
-                        <span>/</span>
-                        <span className="text-[#174B35] font-bold">{selectedSubcategory}</span>
-                      </>
-                    )}
-                  </div>
-
-                  <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight">
-                    {searchQuery
-                      ? `Search: "${searchQuery}"`
-                      : selectedCategory || "Explore Agricultural Produce"}
-                  </h1>
-
-                  {activeBrdCategory && (
-                    <div className="mt-1 space-y-1">
-                      <span className="text-xs font-semibold text-emerald-800 block">
-                        {activeBrdCategory.tamilName}
-                      </span>
-                      <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
-                        {activeBrdCategory.description}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Subcategory Chips if BRD Category is active */}
-                {activeBrdCategory && (
-                  <div className="flex flex-wrap gap-1.5 self-start md:self-center">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSubcategory("")}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                        !selectedSubcategory
-                          ? "bg-[#174B35] text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      All {activeBrdCategory.shortName || "Subcategories"}
-                    </button>
-                    {activeBrdCategory.subcategories.map((sub) => (
-                      <button
-                        key={sub}
-                        type="button"
-                        onClick={() => setSelectedSubcategory(sub)}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          selectedSubcategory === sub
-                            ? "bg-[#174B35] text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {sub}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Controls Bar: Result Count, Sort, Grid/List toggle, Mobile Filter trigger */}
-              <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-3">
-                  <span className="font-extrabold text-gray-900">
-                    {filteredProducts.length} {filteredProducts.length === 1 ? "Product" : "Products"} Found
-                  </span>
-
-                  {/* Mobile filter button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileFilterOpen(true)}
-                    className="md:hidden px-3 py-1.5 rounded-xl border border-gray-300 font-bold text-gray-700 flex items-center gap-1.5 cursor-pointer bg-white"
-                  >
-                    <span>⚙️ Filters</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Sort selector */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500 font-medium">Sort by:</span>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#174B35] cursor-pointer"
-                    >
-                      <option value="RELEVANCE">Relevance</option>
-                      <option value="RECENT">Recently Added</option>
-                      <option value="PRICE_ASC">Price: Low to High</option>
-                      <option value="PRICE_DESC">Price: High to Low</option>
-                    </select>
-                  </div>
-
-                  {/* Grid / List Toggle */}
-                  <div className="hidden sm:flex items-center border border-gray-300 rounded-xl overflow-hidden bg-gray-50">
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode("grid")}
-                      className={`p-1.5 transition-colors cursor-pointer ${
-                        layoutMode === "grid" ? "bg-[#174B35] text-white" : "text-gray-600 hover:bg-gray-200"
-                      }`}
-                      title="Grid View"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLayoutMode("list")}
-                      className={`p-1.5 transition-colors cursor-pointer ${
-                        layoutMode === "list" ? "bg-[#174B35] text-white" : "text-gray-600 hover:bg-gray-200"
-                      }`}
-                      title="List View"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Applied Filter Chips */}
+            {/* Active Filter Chips if any filter is active */}
+            {(selectedCategory || selectedSubcategory || selectedDistricts.length > 0 || selectedGrades.length > 0 || searchQuery) && (
               <FilterChips
                 filters={{
                   searchQuery,
@@ -1095,163 +588,79 @@ function MarketplaceApp() {
                 }}
                 onClearAll={handleClearAllFilters}
               />
-            </div>
+            )}
 
-            {/* Two-Column Listing Layout: Left Filter Panel (Desktop) + Right Results */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-              {/* Desktop Filter Panel */}
-              <aside className="hidden md:block md:col-span-3 bg-white rounded-3xl p-5 border border-gray-200/90 shadow-2xs sticky top-28">
-                <FilterPanel
-                  filters={{
-                    categories: selectedCategory ? [selectedCategory] : [],
-                    subcategories: selectedSubcategory ? [selectedSubcategory] : [],
-                    districts: selectedDistricts,
-                    grades: selectedGrades,
-                    availabilities: selectedAvailabilities,
-                    organicStatuses: selectedOrganic,
-                    moqRange: selectedMoq,
-                  }}
-                  onFilterChange={(field, val) => {
-                    if (field === "categories") setSelectedCategory(val[0] || "");
-                    if (field === "subcategories") setSelectedSubcategory(val[0] || "");
-                    if (field === "districts") setSelectedDistricts(val);
-                    if (field === "grades") setSelectedGrades(val);
-                    if (field === "availabilities") setSelectedAvailabilities(val);
-                    if (field === "organicStatuses") setSelectedOrganic(val);
-                    if (field === "moqRange") setSelectedMoq(val);
-                  }}
-                  onClearFilters={handleClearAllFilters}
-                />
-              </aside>
+            {/* Product Card Grid (4 Columns matching Screenshot 6) */}
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {filteredProducts.map((prod) => (
+                  <ProductCard
+                    key={prod.id}
+                    product={prod}
+                    isSaved={savedIds.includes(prod.id)}
+                    onToggleSave={handleToggleSave}
+                    onEnquire={(p) => setSelectedProductForEnquiry(p)}
+                    onViewSupplier={(p) => {
+                      const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
+                      setSelectedSupplierForModal(
+                        sup || {
+                          id: p.sellerId,
+                          name: p.sellerName,
+                          sellerType: p.sellerType || "Verified Producer",
+                          district: p.originDistrict || p.district,
+                          verified: true,
+                        }
+                      );
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
+                  🌾
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  No agricultural products match your filter criteria
+                </h3>
+                <p className="text-xs text-gray-500 max-w-md mx-auto">
+                  Try clearing active filters or selecting another commodity category.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="px-5 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold cursor-pointer"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
 
-              {/* Results Column */}
-              <div className="md:col-span-9 space-y-4">
-                {/* Matching Suppliers Row if search is active */}
-                {matchingSuppliers.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
-                    <h4 className="text-xs font-bold text-[#174B35] uppercase tracking-wider">
-                      Matching Verified Suppliers ({matchingSuppliers.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {matchingSuppliers.map((sup) => (
-                        <div
-                          key={sup.id}
-                          className="p-3 bg-white rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs"
-                        >
-                          <div>
-                            <span className="font-bold text-gray-900 block">{sup.name}</span>
-                            <span className="text-[11px] text-gray-500">
-                              {sup.district} • {sup.sellerType}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedSupplierForModal(sup)}
-                            className="px-2.5 py-1 rounded-lg bg-[#174B35] text-white text-[11px] font-bold cursor-pointer"
-                          >
-                            View
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {filteredProducts.length === 0 ? (
-                  <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-300 space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
-                      🌾
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">
-                        No agricultural lots match your filter criteria
-                      </h3>
-                      <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
-                        Try clearing some filter tags or searching with a broader commodity term like &quot;paddy&quot;, &quot;turmeric&quot;, or &quot;oil&quot;.
-                      </p>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-center gap-3">
-                      <button
-                        type="button"
-                        onClick={handleClearAllFilters}
-                        className="px-5 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold cursor-pointer"
-                      >
-                        Reset All Filters
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsPostRequirementOpen(true)}
-                        className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
-                      >
-                        Post Requirement Instead
-                      </button>
-                    </div>
-                  </div>
-                ) : layoutMode === "grid" ? (
-                  /* Grid Mode */
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-                    {filteredProducts.map((prod) => (
-                      <ProductCard
-                        key={prod.id}
-                        product={prod}
-                        isSaved={savedIds.includes(prod.id)}
-                        onToggleSave={handleToggleSave}
-                        onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                        onViewSupplier={(p) => {
-                          const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                          setSelectedSupplierForModal(
-                            sup || {
-                              id: p.sellerId,
-                              name: p.sellerName,
-                              sellerType: "Verified Producer",
-                              district: p.originDistrict || p.district,
-                              verified: true,
-                            }
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  /* List Mode */
-                  <div className="space-y-3">
-                    {filteredProducts.map((prod) => (
-                      <ProductRow
-                        key={prod.id}
-                        product={prod}
-                        isSaved={savedIds.includes(prod.id)}
-                        onToggleSave={handleToggleSave}
-                        onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                        onViewSupplier={(p) => {
-                          const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                          setSelectedSupplierForModal(
-                            sup || {
-                              id: p.sellerId,
-                              name: p.sellerName,
-                              sellerType: "Verified Producer",
-                              district: p.originDistrict || p.district,
-                              verified: true,
-                            }
-                          );
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
+            {/* Bottom Notice Strip matching Screenshot 6 */}
+            <div className="rounded-2xl bg-[#E8F0E3]/70 border border-[#174B35]/20 p-4 flex items-center justify-between gap-4 text-xs text-[#174B35] font-semibold">
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-[#174B35] text-white flex items-center justify-center text-xs font-bold shrink-0">
+                  ℹ
+                </span>
+                <span>
+                  One enquiry to a new seller uses one seller access. Repeat enquiries to the same seller do not use another.
+                </span>
+              </div>
+              <div className="hidden sm:block opacity-40 shrink-0 text-xl">
+                🍃
               </div>
             </div>
           </div>
-        )}
+        </div>
       </main>
 
-      {/* Mobile Slide-out Drawer for Filters */}
+      {/* Mobile Drawer Filter Panel */}
       <FilterPanel
         isMobileModal={true}
         isOpen={isMobileFilterOpen}
         onClose={() => setIsMobileFilterOpen(false)}
         filters={{
+          category: selectedCategory,
           categories: selectedCategory ? [selectedCategory] : [],
           subcategories: selectedSubcategory ? [selectedSubcategory] : [],
           districts: selectedDistricts,
@@ -1261,13 +670,22 @@ function MarketplaceApp() {
           moqRange: selectedMoq,
         }}
         onFilterChange={(field, val) => {
-          if (field === "categories") setSelectedCategory(val[0] || "");
-          if (field === "subcategories") setSelectedSubcategory(val[0] || "");
-          if (field === "districts") setSelectedDistricts(val);
-          if (field === "grades") setSelectedGrades(val);
-          if (field === "availabilities") setSelectedAvailabilities(val);
-          if (field === "organicStatuses") setSelectedOrganic(val);
-          if (field === "moqRange") setSelectedMoq(val);
+          if (field === "categories" || field === "category") {
+            setSelectedCategory(Array.isArray(val) ? val[0] || "" : val);
+            setSelectedSubcategory("");
+          } else if (field === "subcategories") {
+            setSelectedSubcategory(val[0] || "");
+          } else if (field === "districts") {
+            setSelectedDistricts(val);
+          } else if (field === "grades") {
+            setSelectedGrades(val);
+          } else if (field === "availabilities") {
+            setSelectedAvailabilities(val);
+          } else if (field === "organicStatuses") {
+            setSelectedOrganic(val);
+          } else if (field === "moqRange") {
+            setSelectedMoq(val);
+          }
         }}
         onClearFilters={handleClearAllFilters}
       />

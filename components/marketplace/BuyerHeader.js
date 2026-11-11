@@ -149,128 +149,101 @@ export default function BuyerHeader({
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200/90 shadow-2xs font-sans">
       {/* ======================================================== */}
-      {/* ROW 1: Logo | Deliver To | Search Bar | Counts | Profile */}
+      {/* MAIN TOP BAR (Screenshot 6 Reference): Logo | Nav | Search | Avatar */}
       {/* ======================================================== */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
         {/* Left: Brand Logo & Title */}
-        <Link href="/marketplace" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden bg-[#F5F5EB] flex items-center justify-center relative shrink-0 shadow-2xs border border-gray-200 group-hover:scale-105 transition-transform">
-            <Image
-              src="/images/ulavan-santhai-emblem@2x.png"
-              alt="Ulavan Santhai Logo"
-              fill
-              sizes="44px"
-              className="object-cover"
-              priority
-            />
+        <Link href="/marketplace" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center relative shrink-0 group-hover:scale-105 transition-transform">
+            <svg className="w-5 h-5 text-[#174B35]" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66l.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z" />
+            </svg>
           </div>
-          <div className="flex flex-col">
-            <span className="text-base sm:text-lg font-black text-[#174B35] tracking-tight leading-none">
-              Ulavan Santhai
-            </span>
-            <span className="text-[9px] uppercase font-bold text-[#729B59] tracking-wider mt-0.5">
-              Agricultural Marketplace
-            </span>
-          </div>
+          <span className="text-xl font-black text-[#174B35] tracking-tight">
+            UlavanSanthai
+          </span>
         </Link>
 
-        {/* Deliver To Chip (Clickable) */}
-        <button
-          type="button"
-          onClick={() => setIsLocationModalOpen(true)}
-          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 bg-gray-50/80 hover:bg-gray-100/80 text-left transition-colors cursor-pointer shrink-0 max-w-[190px]"
-          title="Change procurement delivery location"
-        >
-          <svg className="w-4 h-4 text-[#174B35] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <div className="flex flex-col truncate">
-            <span className="text-[9px] font-medium text-gray-500 uppercase leading-none">Deliver to</span>
-            <span className="text-xs font-bold text-gray-900 truncate leading-tight mt-0.5">
-              {deliveryLocation}
-            </span>
-          </div>
-        </button>
-
-        {/* Center: Search Bar with Category Selector + Button */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className="hidden sm:flex flex-1 max-w-2xl items-center rounded-2xl border-2 border-[#174B35]/40 focus-within:border-[#174B35] bg-white overflow-hidden shadow-2xs transition-all"
-        >
-          {/* Category Selector Dropdown */}
-          <select
-            value={searchCategory}
-            onChange={(e) => setSearchCategory(e.target.value)}
-            className="h-10.5 pl-3 pr-7 text-xs font-bold text-gray-700 bg-gray-50 border-r border-gray-200 outline-none cursor-pointer hover:bg-gray-100 transition-colors shrink-0"
+        {/* Middle: Primary Navigation Links */}
+        <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-gray-600">
+          <Link
+            href="/marketplace"
+            className="text-[#174B35] font-bold border-b-2 border-[#174B35] pb-0.5"
           >
-            <option value="All Categories">All Categories</option>
-            {BRD_CATEGORIES.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Search Input */}
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search turmeric, carrots, ponni rice, groundnut oil, suppliers..."
-            className="flex-1 h-10.5 px-3.5 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 outline-none"
-          />
-
-          {/* Search Button */}
+            Marketplace
+          </Link>
+          <Link href="/about" className="hover:text-[#174B35] transition-colors">
+            About Us
+          </Link>
+          <Link href="/onboarding?role=seller&step=1" className="hover:text-[#174B35] transition-colors">
+            For Sellers
+          </Link>
           <button
-            type="submit"
-            className="h-10.5 px-4 bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            type="button"
+            onClick={() => onOpenHelp && onOpenHelp()}
+            className="hover:text-[#174B35] transition-colors cursor-pointer"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <span className="hidden md:inline">Search</span>
+            Resources
           </button>
-        </form>
+          <Link href="/contact" className="hover:text-[#174B35] transition-colors">
+            Contact
+          </Link>
+        </nav>
 
-        {/* Right Section: Saved | Enquiries | Alerts | Profile Dropdown */}
-        <div className="flex items-center gap-1.5 sm:gap-3" ref={profileRef}>
-          {/* 1. Saved (Count) */}
+        {/* Right: Search Input + Profile Avatar */}
+        <div className="flex items-center gap-3 sm:gap-4 flex-1 md:flex-initial justify-end">
+          {/* Search Input matching Screenshot 6 */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="relative max-w-xs w-full hidden sm:block"
+          >
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for products, categories..."
+              className="w-full h-9.5 pl-3.5 pr-9 text-xs rounded-full border border-gray-300 focus:border-[#174B35] outline-none bg-gray-50/70 focus:bg-white text-gray-800 placeholder:text-gray-400 transition-all shadow-2xs"
+            />
+            <button
+              type="submit"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#174B35] cursor-pointer"
+              title="Search catalog"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          </form>
+
+          {/* Quick links: Saved & Enquiries */}
           <Link
             href="/marketplace/saved"
-            className="flex flex-col items-center justify-center px-2 py-1 rounded-xl text-gray-700 hover:text-[#174B35] hover:bg-gray-50 transition-colors relative"
-            title="View Saved / Bookmarked Products"
+            className="p-1.5 rounded-full text-gray-600 hover:text-[#174B35] hover:bg-gray-100 transition-colors relative"
+            title="Saved Products"
           >
-            <div className="relative">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              {savedCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center shadow-xs">
-                  {savedCount}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] font-bold mt-0.5 hidden md:block">Saved</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {savedCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                {savedCount}
+              </span>
+            )}
           </Link>
 
-          {/* 2. Enquiries (Count) */}
           <Link
             href="/buyer/enquiries"
-            className="flex flex-col items-center justify-center px-2 py-1 rounded-xl text-gray-700 hover:text-[#174B35] hover:bg-gray-50 transition-colors relative"
-            title="View My Sent Enquiries & Responses"
+            className="p-1.5 rounded-full text-gray-600 hover:text-[#174B35] hover:bg-gray-100 transition-colors relative"
+            title="My Enquiries"
           >
-            <div className="relative">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              {enquiryCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-[#174B35] text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center shadow-xs">
-                  {enquiryCount}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] font-bold mt-0.5 hidden md:block">Enquiries</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            {enquiryCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#174B35] text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                {enquiryCount}
+              </span>
+            )}
           </Link>
 
           {/* 3. Alerts (Unread Count) */}
@@ -344,8 +317,9 @@ export default function BuyerHeader({
               }}
               className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-gray-200 hover:border-gray-300 bg-gray-50/60 hover:bg-white transition-all cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-[#174B35] text-white flex items-center justify-center font-extrabold text-xs shadow-xs">
-                {sessionUser?.name ? sessionUser.name.charAt(0).toUpperCase() : "B"}
+              <div className="relative w-8 h-8 rounded-full bg-[#174B35] text-white flex items-center justify-center font-extrabold text-xs shadow-xs">
+                <span>{sessionUser?.name ? sessionUser.name.charAt(0).toUpperCase() : "S"}</span>
+                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-400 border border-white" />
               </div>
               <div className="hidden lg:flex flex-col text-left">
                 <span className="text-xs font-bold text-gray-900 leading-tight truncate max-w-[100px]">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,23 +9,77 @@ import { useSessionUser } from "@/services/sessionAuth";
 export default function GetStartedPage() {
   const router = useRouter();
   const sessionUser = useSessionUser();
+
+  // 1. Initial status reads from local session (instant render, zero flicker)
+  const [liveUser, setLiveUser] = useState(null);
+
+  // 2. Query GET /api/v1/user/me live from Express backend on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncLiveStatus() {
+      try {
+        const token =
+          (typeof window !== "undefined" &&
+            (sessionStorage.getItem("ulavan_auth_token") ||
+              localStorage.getItem("ulavan_auth_token"))) ||
+          "";
+
+        if (!token) return;
+
+        const res = await fetch("/api/v1/user/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+          cache: "no-store",
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          const userData = result.data || result.user || result;
+
+          if (isMounted && userData && typeof userData === "object") {
+            setLiveUser(userData);
+
+            // Sync updated values to session storage for seamless cross-page use
+            if (typeof window !== "undefined") {
+              const stored = sessionStorage.getItem("ulavan_user");
+              const current = stored ? JSON.parse(stored) : {};
+              current.sellerOnboarded = Boolean(userData.sellerOnboarded);
+              current.buyerOnboarded = Boolean(userData.buyerOnboarded);
+              sessionStorage.setItem("ulavan_user", JSON.stringify(current));
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[GetStarted] Live status check skipped, using session state:", err.message);
+      }
+    }
+
+    syncLiveStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const userName =
-    sessionUser?.name && sessionUser.name !== "Farmer Ramesh Kumar"
+    liveUser?.name ||
+    (sessionUser?.name && sessionUser.name !== "Farmer Ramesh Kumar"
       ? sessionUser.name
-      : "";
+      : "");
 
-  const isBuyerOnboarded = Boolean(
-    sessionUser?.buyerPaid ||
-    sessionUser?.buyerOnboarded ||
-    (sessionUser?.buyerData && sessionUser?.isPaid && (sessionUser?.role === "Buyer" || sessionUser?.activeRole === "buyer"))
-  );
+  // 3. Flags derived with live database priority
+  const isSellerOnboarded = liveUser
+    ? Boolean(liveUser.sellerOnboarded)
+    : Boolean(sessionUser?.sellerOnboarded || sessionUser?.sellerPaid);
 
-  const isSellerOnboarded = Boolean(
-    sessionUser?.sellerPaid ||
-    sessionUser?.sellerOnboarded ||
-    (sessionUser?.sellerData && sessionUser?.isPaid && (sessionUser?.role === "Seller" || sessionUser?.activeRole === "seller"))
-  );
+  const isBuyerOnboarded = liveUser
+    ? Boolean(liveUser.buyerOnboarded)
+    : Boolean(sessionUser?.buyerOnboarded || sessionUser?.buyerPaid);
 
+  // 4. Role Selection Redirection Handler
   const handleSelectRole = (role) => {
     try {
       const stored =
@@ -35,35 +90,28 @@ export default function GetStartedPage() {
 
       const roleCapitalized = role === "buyer" ? "Buyer" : "Seller";
       currentUser.activeRole = role;
+      currentUser.role = roleCapitalized;
 
       sessionStorage.setItem("ulavan_user", JSON.stringify(currentUser));
       sessionStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
       localStorage.setItem("ulavan_registered_user", JSON.stringify(currentUser));
 
-      const isBuyerDone = Boolean(
-        currentUser.buyerPaid ||
-        currentUser.buyerOnboarded ||
-        (currentUser.buyerData && currentUser.isPaid && (currentUser.role === "Buyer" || currentUser.activeRole === "buyer"))
-      );
-
-      const isSellerDone = Boolean(
-        currentUser.sellerPaid ||
-        currentUser.sellerOnboarded ||
-        (currentUser.sellerData && currentUser.isPaid && (currentUser.role === "Seller" || currentUser.activeRole === "seller"))
-      );
-
-      if (role === "buyer") {
-        if (isBuyerDone) {
-          router.push("/marketplace");
-        } else {
-          router.push("/onboarding?role=buyer&step=1");
-        }
-      } else {
-        if (isSellerDone) {
+      if (role === "seller") {
+        if (isSellerOnboarded) {
           router.push("/seller/dashboard");
         } else {
           router.push("/onboarding?role=seller&step=1");
         }
+        return;
+      }
+
+      if (role === "buyer") {
+        if (isBuyerOnboarded) {
+          router.push("/marketplace");
+        } else {
+          router.push("/onboarding?role=buyer&step=1");
+        }
+        return;
       }
     } catch {
       router.push(`/onboarding?role=${role}&step=1`);
@@ -87,7 +135,7 @@ export default function GetStartedPage() {
       isOnboarded: isBuyerOnboarded,
       popularBadge: isBuyerOnboarded ? "Active Plan" : "Step 1 to 4 Required",
       buttonText: isBuyerOnboarded ? "Open Buyer Workspace" : "Complete Buyer Form (4 Steps)",
-      buttonBg: isBuyerOnboarded ? "bg-[#174B35] hover:bg-[#103A29] text-white" : "bg-[#174B35] hover:bg-[#103A29] text-white",
+      buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
     },
     {
@@ -106,7 +154,7 @@ export default function GetStartedPage() {
       isOnboarded: isSellerOnboarded,
       popularBadge: isSellerOnboarded ? "Active Plan" : "Step 1 to 4 Required",
       buttonText: isSellerOnboarded ? "Open Seller Workspace" : "Complete Seller Form (4 Steps)",
-      buttonBg: isSellerOnboarded ? "bg-[#174B35] hover:bg-[#103A29] text-white" : "bg-[#174B35] hover:bg-[#103A29] text-white",
+      buttonBg: "bg-[#174B35] hover:bg-[#103A29] text-white",
       borderAccent: "hover:border-[#174B35]",
     },
   ];

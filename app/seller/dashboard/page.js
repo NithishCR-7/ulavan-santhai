@@ -69,11 +69,19 @@ export default function SellerDashboardPage() {
     async function loadData() {
       try {
         const res = await getSellerDashboardData();
+        if (res?.status === 403 || res?.statusCode === 403) {
+          router.replace("/onboarding?role=seller&step=1");
+          return;
+        }
         if (isMounted && res.success && res.data) {
           setDashboardData(res.data);
           setIsMockActive(Boolean(res.isMock));
         }
       } catch (err) {
+        if (err?.status === 403 || err?.message?.includes("403")) {
+          router.replace("/onboarding?role=seller&step=1");
+          return;
+        }
         console.error("Error fetching dashboard data:", err);
       } finally {
         if (isMounted) {

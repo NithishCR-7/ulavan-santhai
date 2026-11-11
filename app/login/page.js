@@ -81,7 +81,11 @@ function LoginContent() {
           const data = await response.json().catch(() => null);
           if (data && data.success !== false) {
             apiSuccess = true;
-            userData = data.user;
+            userData = {
+              ...data.user,
+              sellerOnboarded: Boolean(data.user?.sellerOnboarded),
+              buyerOnboarded: Boolean(data.user?.buyerOnboarded),
+            };
             token = data.token;
           }
         }
