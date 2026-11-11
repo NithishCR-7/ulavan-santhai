@@ -128,6 +128,18 @@
  .works-section { padding:44px 20px; }
  .works-heading { margin-bottom:26px; }
  .works-heading>p { font-size:14px; }
+ .works-explainer {
+   grid-template-columns:minmax(0,1fr);
+   gap:24px;
+   padding:28px clamp(12px, 6vw, 32px);
+ }
+ .works-demo-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); }
+ .works-demo-tabs button {
+   min-width:0;
+   padding-inline:2px;
+   text-align:center;
+   overflow-wrap:anywhere;
+ }
  .works-journey { grid-template-columns:1fr; gap:24px; padding-left:25px; border-left:2px solid #b9cba5; margin-left:16px; }
  .works-milestone { height:0; }
  .works-milestone>span:first-child { position:absolute; left:-44px; top:12px; border:3px solid #f5f5eb; width:36px; height:36px; }

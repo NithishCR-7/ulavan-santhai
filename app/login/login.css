@@ -9,6 +9,10 @@
   background: #c3dce4 url("/images/login-paddy-distant-farmer.webp") center bottom / cover no-repeat;
 }
 
+.login-page:has(.register-form) {
+  background-image: url("/images/register-paddy-harvest.webp");
+}
+
 .login-navigation {
   position: absolute;
   z-index: 3;
