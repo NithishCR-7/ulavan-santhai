@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CloseIcon, CheckCircleIcon } from "./Icons";
 
 const FAQ_ITEMS = [
   {
@@ -66,7 +67,7 @@ export default function HelpModal({ isOpen, onClose }) {
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -114,8 +115,9 @@ export default function HelpModal({ isOpen, onClose }) {
             </p>
 
             {ticketSubmitted ? (
-              <div className="p-3 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-bold text-center">
-                ✓ Your inquiry has been submitted. Our trade desk will respond within 4 business hours.
+              <div className="p-3 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-bold text-center flex items-center justify-center gap-1.5">
+                <CheckCircleIcon className="w-4 h-4 text-emerald-800 shrink-0" />
+                <span>Your inquiry has been submitted. Our trade desk will respond within 4 business hours.</span>
               </div>
             ) : (
               <form onSubmit={handleSupportSubmit} className="space-y-3">

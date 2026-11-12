@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BuyerHeader from "@/components/marketplace/BuyerHeader";
+import BuyerSidebar from "@/components/marketplace/BuyerSidebar";
 import BottomTabBar from "@/components/marketplace/BottomTabBar";
 import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
 import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
@@ -17,7 +17,12 @@ import {
   updateEnquiryStatus,
 } from "@/services/enquiryApi";
 import { useSessionUser } from "@/services/sessionAuth";
-import { SELLER_DIRECTORY } from "@/data/marketplaceCatalog";
+import {
+  MailIcon,
+  CloseIcon,
+  CheckCircleIcon,
+  ClockIcon,
+} from "@/components/marketplace/Icons";
 
 export default function BuyerEnquiriesPage() {
   return (
@@ -92,9 +97,6 @@ function BuyerEnquiriesContent() {
     } catch (err) {}
   };
 
-  // Status mapping for Screenshot 4:
-  // "RESPONDED" -> "Answered"
-  // "NEW", "VIEWED", "SENT" -> "Pending"
   const getNormalizedStatus = (enq) => {
     const s = (enq.status || "NEW").toUpperCase();
     if (s === "RESPONDED" || s === "ANSWERED") return "Answered";
@@ -116,15 +118,6 @@ function BuyerEnquiriesContent() {
     }
     return true;
   });
-
-  // Handle Logout
-  const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.clear();
-      localStorage.removeItem("ulavan_buyer_token");
-      router.push("/login");
-    }
-  };
 
   // Reply handler
   const handleSendFollowUp = async (e) => {
@@ -169,7 +162,7 @@ function BuyerEnquiriesContent() {
     } catch (e) {}
   };
 
-  // Fallback product image resolver
+  // Accurate product image resolver
   const getThumbnailSrc = (enq) => {
     if (enq.productThumbnail && enq.productThumbnail.startsWith("http")) {
       return enq.productThumbnail;
@@ -196,12 +189,9 @@ function BuyerEnquiriesContent() {
     return enq.productThumbnail || "/images/photographs/farmer-harvest.jpg";
   };
 
-  const displayName = sessionUser?.name || "Sherlin A";
-  const displayEmail = sessionUser?.email || "sherlinzenith@gmail.com";
-
   return (
     <div className="min-h-screen bg-[#FBFBF9] flex flex-col font-sans selection:bg-[#174B35] selection:text-white relative overflow-hidden pb-16">
-      {/* 1. Header matching Screenshot 4 & 6 */}
+      {/* 1. Header */}
       <BuyerHeader
         onSearch={(q, cat) =>
           router.push(
@@ -217,68 +207,10 @@ function BuyerEnquiriesContent() {
       {/* Main Container - 2 Column Layout Matching Screenshot 4 */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Profile Card & Navigation Sidebar */}
-          <aside className="md:col-span-4 lg:col-span-3">
-            <div className="bg-white rounded-2xl border border-gray-150 p-6 shadow-xs space-y-6">
-              {/* User Identity */}
-              <div className="flex flex-col items-center text-center">
-                <div className="w-18 h-18 rounded-full bg-[#174B35] text-white flex items-center justify-center text-2xl font-black shadow-inner ring-4 ring-emerald-50 mb-3">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
-                <h3 className="text-base font-bold text-gray-900">{displayName}</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{displayEmail}</p>
-              </div>
-
-              {/* Navigation Menu */}
-              <nav className="space-y-1.5 pt-2 border-t border-gray-100 text-xs font-semibold">
-                {/* 1. My Orders */}
-                <button
-                  type="button"
-                  onClick={() => router.push("/marketplace")}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                >
-                  <span className="text-base">📦</span>
-                  <span>My Orders</span>
-                </button>
-
-                {/* 2. My Enquiries (ACTIVE) */}
-                <div className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#EAF5ED] text-[#174B35] font-bold">
-                  <span className="text-base">✉️</span>
-                  <span>My Enquiries</span>
-                </div>
-
-                {/* 3. Wishlist */}
-                <button
-                  type="button"
-                  onClick={() => router.push("/marketplace")}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                >
-                  <span className="text-base">🤍</span>
-                  <span>Wishlist</span>
-                </button>
-
-                {/* 4. Profile */}
-                <button
-                  type="button"
-                  onClick={() => setIsProfileOpen(true)}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                >
-                  <span className="text-base">👤</span>
-                  <span>Profile</span>
-                </button>
-
-                {/* 5. Logout */}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer text-left"
-                >
-                  <span className="text-base">🚪</span>
-                  <span>Logout</span>
-                </button>
-              </nav>
-            </div>
-          </aside>
+          {/* Left Column: Reusable Buyer Sidebar */}
+          <div className="md:col-span-4 lg:col-span-3">
+            <BuyerSidebar />
+          </div>
 
           {/* Right Column: My Enquiries Workspace */}
           <section className="md:col-span-8 lg:col-span-9 space-y-6">
@@ -286,6 +218,9 @@ function BuyerEnquiriesContent() {
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
                 My Enquiries
               </h1>
+              <p className="text-xs text-gray-500 mt-1">
+                Direct procurement enquiries sent to verified farm producers and suppliers.
+              </p>
             </div>
 
             {/* Tabs: All | Pending | Answered */}
@@ -323,8 +258,8 @@ function BuyerEnquiriesContent() {
               </div>
             ) : filteredEnquiries.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-gray-200 space-y-3">
-                <div className="w-14 h-14 rounded-full bg-emerald-50 text-2xl flex items-center justify-center mx-auto text-[#174B35]">
-                  ✉️
+                <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-[#174B35]">
+                  <MailIcon className="w-7 h-7 text-[#174B35]" />
                 </div>
                 <h3 className="text-base font-bold text-gray-900">
                   No {activeTab !== "All" ? activeTab.toLowerCase() : ""} enquiries found
@@ -385,12 +320,14 @@ function BuyerEnquiriesContent() {
                       {/* Right: Status Pill & View Details Button */}
                       <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                         {isAnswered ? (
-                          <span className="px-3.5 py-1 rounded-full text-[11px] font-semibold bg-[#EAF5ED] text-[#174B35] border border-emerald-200">
-                            Answered
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#EAF5ED] text-[#174B35] border border-emerald-200">
+                            <CheckCircleIcon className="w-3.5 h-3.5 text-[#174B35]" />
+                            <span>Answered</span>
                           </span>
                         ) : (
-                          <span className="px-3.5 py-1 rounded-full text-[11px] font-semibold bg-[#FFF7ED] text-[#C2410C] border border-orange-200">
-                            Pending
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#FFF7ED] text-[#C2410C] border border-orange-200">
+                            <ClockIcon className="w-3.5 h-3.5 text-[#C2410C]" />
+                            <span>Pending</span>
                           </span>
                         )}
 
@@ -412,31 +349,7 @@ function BuyerEnquiriesContent() {
         </div>
       </main>
 
-      {/* Decorative leaf motifs in bottom corners matching Screenshot 4 */}
-      <div className="fixed -bottom-10 -left-10 pointer-events-none opacity-20 z-0">
-        <svg width="220" height="220" viewBox="0 0 200 200" fill="none">
-          <path
-            d="M20 180C40 100 120 40 190 20C170 100 100 170 20 180Z"
-            fill="#174B35"
-          />
-          <path
-            d="M50 170C80 120 130 70 185 25"
-            stroke="#103A29"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
-      </div>
-      <div className="fixed -bottom-10 -right-10 pointer-events-none opacity-15 z-0">
-        <svg width="220" height="220" viewBox="0 0 200 200" fill="none">
-          <path
-            d="M180 180C160 100 80 40 10 20C30 100 100 170 180 180Z"
-            fill="#174B35"
-          />
-        </svg>
-      </div>
-
-      {/* Detailed Enquiry Modal (Screen 10 / Screenshot 4 & 5 Integration) */}
+      {/* Detailed Enquiry Modal */}
       {activeEnquiry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-150 max-h-[92vh] flex flex-col">
@@ -466,7 +379,7 @@ function BuyerEnquiriesContent() {
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Seller: <strong>{activeEnquiry.sellerName || "AgriFresh Exports"}</strong> • {activeEnquiry.sellerDistrict || "Tamil Nadu"}
+                    Seller: <strong>{activeEnquiry.sellerName || "AgriFresh Exports"}</strong> &bull; {activeEnquiry.sellerDistrict || "Tamil Nadu"}
                   </p>
                 </div>
               </div>
@@ -476,7 +389,7 @@ function BuyerEnquiriesContent() {
                 onClick={() => setActiveEnquiry(null)}
                 className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
@@ -543,7 +456,7 @@ function BuyerEnquiriesContent() {
                           <p className="text-gray-700 leading-relaxed text-xs">{msg.message}</p>
                           {msg.quotedPrice && (
                             <div className="mt-2 p-2 bg-emerald-100/70 rounded-lg text-[11px] font-bold text-[#174B35]">
-                              Quoted Price: ₹{msg.quotedPrice} per {msg.unit || "kg"}
+                              Quoted Price: Rs {msg.quotedPrice} per {msg.unit || "kg"}
                             </div>
                           )}
                         </div>
@@ -597,18 +510,13 @@ function BuyerEnquiriesContent() {
               <button
                 type="button"
                 onClick={() => {
-                  const sup = SELLER_DIRECTORY.find(
-                    (s) => s.id === activeEnquiry.sellerId || s.name === activeEnquiry.sellerName
-                  );
-                  setSelectedSupplierForModal(
-                    sup || {
-                      id: activeEnquiry.sellerId,
-                      name: activeEnquiry.sellerName,
-                      district: activeEnquiry.sellerDistrict,
-                      sellerType: "Verified Producer",
-                      verified: true,
-                    }
-                  );
+                  setSelectedSupplierForModal({
+                    id: activeEnquiry.sellerId,
+                    name: activeEnquiry.sellerName,
+                    district: activeEnquiry.sellerDistrict || "Tamil Nadu",
+                    sellerType: "Verified Producer",
+                    verified: true,
+                  });
                 }}
                 className="text-xs font-bold text-[#174B35] hover:underline cursor-pointer"
               >

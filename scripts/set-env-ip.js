@@ -97,7 +97,12 @@ async function scanSubnet(port = 5000) {
 async function main() {
   const arg = process.argv[2];
 
-  if (arg === "scan" || arg === "auto" || !arg) {
+  if (!arg) {
+    console.log("\x1b[33mℹ Preserving existing .env.local. To explicitly update IP, pass an IP: node scripts/set-env-ip.js <ip>\x1b[0m");
+    return;
+  }
+
+  if (arg === "scan" || arg === "auto") {
     await scanSubnet(5000);
   } else if (arg === "local" || arg === "localhost") {
     updateEnv("localhost", 5000);

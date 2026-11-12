@@ -3,6 +3,15 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  HeartIcon,
+  LocationIcon,
+  StarIcon,
+  PackageIcon,
+  ShieldCheckIcon,
+  LeafIcon,
+  SproutIcon,
+} from "./Icons";
 
 export default function ProductCard({
   product,
@@ -48,7 +57,7 @@ export default function ProductCard({
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-linear-to-br from-emerald-50 to-[#E8F0E3] text-[#174B35] text-center">
-              <span className="text-3xl mb-1">🌾</span>
+              <SproutIcon className="w-8 h-8 mb-1 text-[#174B35]" />
               <span className="text-xs font-bold line-clamp-2">{product.title}</span>
             </div>
           )}
@@ -70,17 +79,10 @@ export default function ProductCard({
           aria-label={isSaved ? "Remove from wishlist" : "Add to wishlist"}
           title={isSaved ? "Saved to Wishlist" : "Save to Wishlist"}
         >
-          <svg
-            className={`w-4 h-4 ${isSaved ? "fill-current" : "stroke-current fill-none"}`}
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
+          <HeartIcon
+            className={`w-4 h-4 ${isSaved ? "text-red-600" : "text-gray-500 hover:text-red-500"}`}
+            filled={isSaved}
+          />
         </button>
       </div>
 
@@ -97,34 +99,34 @@ export default function ProductCard({
             </h3>
           </Link>
 
-          {/* 1. Category with leaf icon */}
+          {/* 1. Category with leaf vector icon */}
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className="text-[#174B35] text-xs">🍃</span>
+            <LeafIcon className="w-3.5 h-3.5 text-[#174B35] shrink-0" />
             <span className="truncate">{categoryDisplay}</span>
           </div>
 
-          {/* 2. Origin with map pin icon */}
+          {/* 2. Origin with map pin vector icon */}
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className="text-gray-500 text-xs">📍</span>
+            <LocationIcon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
             <span className="truncate">{originDisplay}</span>
           </div>
 
-          {/* 3. Grade with star icon */}
+          {/* 3. Grade with star vector icon */}
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className="text-amber-500 text-xs">★</span>
+            <StarIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" filled={true} />
             <span>{gradeDisplay}</span>
           </div>
 
-          {/* 4. MOQ with cart/box icon */}
+          {/* 4. MOQ with package vector icon */}
           <div className="flex items-center gap-1.5 text-xs text-gray-600">
-            <span className="text-gray-500 text-xs">🛒</span>
+            <PackageIcon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
             <span className="font-medium text-gray-700">{moqDisplay}</span>
           </div>
 
           {/* 5. Verified Seller Badge */}
           <div className="pt-0.5">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200/60">
-              <span className="text-emerald-700 font-bold">✓</span>
+              <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
               <span>Verified Seller</span>
             </span>
           </div>
@@ -140,11 +142,11 @@ export default function ProductCard({
             View details
           </Link>
 
-          {/* [Enquire] solid forest green button */}
+          {/* [Enquire] button */}
           <button
             type="button"
             onClick={() => onEnquire && onEnquire(product)}
-            className="flex-1 py-2 px-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold text-center shadow-xs transition-colors cursor-pointer"
+            className="flex-1 py-2 px-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold text-center transition-colors cursor-pointer shadow-xs"
           >
             Enquire
           </button>
@@ -153,4 +155,3 @@ export default function ProductCard({
     </div>
   );
 }
-

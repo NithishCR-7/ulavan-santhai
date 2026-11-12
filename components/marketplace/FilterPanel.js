@@ -8,6 +8,7 @@ import {
   AVAILABILITY_STATUSES,
   MOQ_RANGES,
 } from "@/data/marketplaceCatalog";
+import { CloseIcon } from "./Icons";
 
 export default function FilterPanel({
   filters = {},
@@ -400,7 +401,7 @@ export default function FilterPanel({
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 text-sm cursor-pointer"
             >
-              ✕
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto py-4">{panelContent}</div>

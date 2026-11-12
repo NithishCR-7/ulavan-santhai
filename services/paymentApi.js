@@ -1,16 +1,13 @@
 /**
  * Ulavan Santhai - Payment & Admin Review API Service
- * Task 8: Registration, Payment and Approval Flow Integration.
- * Implements configurable pricing, payment records, gateway contract, and admin verification.
+ * Strictly communicates with backend API (/api/v1/payments).
+ * No mock data, no static fallback arrays.
  */
 
 import { apiFetch } from "./apiConfig";
 
-export const PAYMENT_STORAGE_KEY = "ulavan_payments";
-export const ADMIN_REVIEWS_STORAGE_KEY = "ulavan_admin_payment_reviews";
-
 /**
- * Configurable Role-Based Pricing Plans
+ * Configurable Role-Based Pricing Plans (metadata for UI display)
  */
 export const PRICING_PLANS = {
   BUYER: {
@@ -18,7 +15,7 @@ export const PRICING_PLANS = {
     role: "BUYER",
     name: "Buyer Verified Access Plan",
     basePrice: 365,
-    taxAmount: 0, // Agricultural marketplace exemption / all-inclusive
+    taxAmount: 0,
     totalAmount: 365,
     currency: "INR",
     billingCycle: "Annual Access",
@@ -39,7 +36,7 @@ export const PRICING_PLANS = {
     role: "SELLER",
     name: "Seller Platform Membership",
     basePrice: 365,
-    taxAmount: 0, // All-inclusive
+    taxAmount: 0,
     totalAmount: 365,
     currency: "INR",
     billingCycle: "Per Month",
@@ -56,493 +53,103 @@ export const PRICING_PLANS = {
 };
 
 /**
- * Seed initial sample payment review requests for admin audit trail
+ * Record a payment checkout transaction strictly on backend
  */
-const SEED_PAYMENTS = [
-  {
-    id: "pay_sample_101",
-    transactionId: "TXN_US_98241289",
-    gatewayReference: "GW_RZP_9824128911",
-    invoiceNumber: "INV-US-2026-00412",
-    userId: "USR_RAMESH_9824",
-    userName: "Farmer Ramesh Kumar",
-    userEmail: "ramesh@ulavansanthai.in",
-    userMobile: "9876543210",
-    role: "SELLER",
-    planId: "plan_seller_monthly",
-    planName: "Seller Platform Membership (₹365/mo)",
-    baseAmount: 365,
-    taxAmount: 0,
-    totalAmount: 365,
-    paymentMethod: "UPI",
-    paymentDetails: { upiVpa: "ramesh.farmer@okhdfcbank" },
-    paymentStatus: "APPROVED", // PENDING | APPROVED | REJECTED | FAILED
-    paymentDate: "2026-11-04T10:30:00.000Z",
-    planStartDate: "2026-11-04T10:30:00.000Z",
-    planEndDate: "2026-12-04T10:30:00.000Z",
-    renewalDueDate: "2026-12-04T10:30:00.000Z",
-    adminReview: {
-      reviewStatus: "APPROVED",
-      reviewedBy: "Admin Senthil (Officer #04)",
-      reviewedAt: "2026-11-04T11:15:00.000Z",
-      remarks: "UPI bank reference matched with HDFC settlement report.",
-      refundFlag: false,
-    },
-  },
-];
-
-const SEED_REVIEWS = [
-  {
-    id: "rev_sample_101",
-    paymentId: "pay_sample_101",
-    transactionId: "TXN_US_98241289",
-    gatewayReference: "GW_RZP_9824128911",
-    userId: "USR_RAMESH_9824",
-    userName: "Farmer Ramesh Kumar",
-    userEmail: "ramesh@ulavansanthai.in",
-    userMobile: "9876543210",
-    role: "SELLER",
-    amount: 365,
-    paymentMethod: "UPI",
-    submittedAt: "2026-11-04T10:30:00.000Z",
-    reviewStatus: "APPROVED",
-    reviewedBy: "Admin Senthil (Officer #04)",
-    reviewedAt: "2026-11-04T11:15:00.000Z",
-    remarks: "UPI bank reference matched with settlement report.",
-    refundFlag: false,
-  },
-];
-
-/**
- * Get all stored payments from browser storage
- */
-export function getLocalStoredPayments() {
-  if (typeof window === "undefined") return SEED_PAYMENTS;
-  try {
-    const raw = localStorage.getItem(PAYMENT_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(SEED_PAYMENTS));
-      return SEED_PAYMENTS;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : SEED_PAYMENTS;
-  } catch (err) {
-    console.error("[PaymentApi] Error reading payments from storage:", err);
-    return SEED_PAYMENTS;
-  }
-}
-
-/**
- * Save payments to storage
- */
-export function setLocalStoredPayments(payments) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(PAYMENT_STORAGE_KEY, JSON.stringify(payments));
-  } catch (err) {
-    console.error("[PaymentApi] Error saving payments:", err);
-  }
-}
-
-/**
- * Get all admin payment reviews from storage
- */
-export function getLocalStoredReviews() {
-  if (typeof window === "undefined") return SEED_REVIEWS;
-  try {
-    const raw = localStorage.getItem(ADMIN_REVIEWS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ADMIN_REVIEWS_STORAGE_KEY, JSON.stringify(SEED_REVIEWS));
-      return SEED_REVIEWS;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : SEED_REVIEWS;
-  } catch (err) {
-    console.error("[PaymentApi] Error reading reviews from storage:", err);
-    return SEED_REVIEWS;
-  }
-}
-
-/**
- * Save admin payment reviews
- */
-export function setLocalStoredReviews(reviews) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(ADMIN_REVIEWS_STORAGE_KEY, JSON.stringify(reviews));
-  } catch (err) {
-    console.error("[PaymentApi] Error saving reviews:", err);
-  }
-}
-
-/**
- * STAGE 4: Process and Record Role Payment Checkout
- */
-export async function submitRolePayment(checkoutData) {
-  const role = (checkoutData.role || "BUYER").toUpperCase();
+export async function recordPaymentCheckout(checkoutData) {
+  const role = checkoutData.role || "BUYER";
   const plan = PRICING_PLANS[role] || PRICING_PLANS.BUYER;
+  const txId = checkoutData.transactionId || `TXN_US_${Date.now()}`;
 
-  const now = new Date();
-  const nowIso = now.toISOString();
-
-  // End date calculation
-  const endDate = new Date(now);
-  if (role === "SELLER") {
-    endDate.setDate(endDate.getDate() + 30); // 30-day monthly cycle
-  } else {
-    endDate.setFullYear(endDate.getFullYear() + 1); // 1-year buyer access
-  }
-
-  const txId = checkoutData.transactionId || `TXN_US_${Date.now().toString().slice(-8)}`;
-  const gwRef = checkoutData.gatewayReference || `GW_${checkoutData.paymentMethod?.toUpperCase() || "PAY"}_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-  const invNumber = `INV-US-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-
-  const paymentRecord = {
-    id: `pay_${Date.now()}`,
+  const payload = {
     transactionId: txId,
-    gatewayReference: gwRef,
-    invoiceNumber: invNumber,
-    userId: checkoutData.userId || `USR_${Date.now().toString().slice(-6)}`,
-    userName: checkoutData.userName || "Verified User",
-    userEmail: checkoutData.userEmail || "user@example.com",
-    userMobile: checkoutData.userMobile || "9876543210",
-    role: role,
-    planId: plan.id,
-    planName: plan.name,
-    baseAmount: plan.basePrice,
-    taxAmount: plan.taxAmount,
-    totalAmount: plan.totalAmount,
-    currency: plan.currency,
-    paymentMethod: checkoutData.paymentMethod || "UPI",
-    paymentDetails: checkoutData.paymentDetails || {},
-    paymentStatus: "PENDING", // Initial status awaiting admin review
-    paymentDate: nowIso,
-    planStartDate: nowIso,
-    planEndDate: endDate.toISOString(),
-    renewalDueDate: endDate.toISOString(),
-    // Buyer specific access limit tracking
-    buyerContactLimit: role === "BUYER" ? plan.initialContactLimit : null,
-    buyerContactsViewed: 0,
-    buyerContactsRemaining: role === "BUYER" ? plan.initialContactLimit : null,
-    adminReview: {
-      reviewStatus: "PENDING_REVIEW",
-      reviewedBy: null,
-      reviewedAt: null,
-      remarks: "Payment received. Queued for admin verification.",
-      refundFlag: false,
-    },
-  };
-
-  // Create corresponding Admin Review Request
-  const reviewRequest = {
-    id: `rev_${Date.now()}`,
-    paymentId: paymentRecord.id,
-    transactionId: txId,
-    gatewayReference: gwRef,
-    invoiceNumber: invNumber,
-    userId: paymentRecord.userId,
-    userName: paymentRecord.userName,
-    userEmail: paymentRecord.userEmail,
-    userMobile: paymentRecord.userMobile,
-    role: role,
-    planName: plan.name,
+    role,
     amount: plan.totalAmount,
     paymentMethod: checkoutData.paymentMethod || "UPI",
     paymentDetails: checkoutData.paymentDetails || {},
-    submittedAt: nowIso,
-    reviewStatus: "PENDING_REVIEW",
-    reviewedBy: null,
-    reviewedAt: null,
-    remarks: "Awaiting bank statement reconciliation.",
-    refundFlag: false,
+    planName: plan.name,
   };
 
-  // Dispatch to backend API
-  const apiRes = await apiFetch(
-    "/api/v1/payments",
-    {
-      method: "POST",
-      body: JSON.stringify({ paymentRecord, reviewRequest }),
-    },
-    paymentRecord
-  );
+  return apiFetch("/api/v1/payments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
 
-  // Synchronize local persistent storage
-  const existingPayments = getLocalStoredPayments();
-  const updatedPayments = [paymentRecord, ...existingPayments];
-  setLocalStoredPayments(updatedPayments);
+/**
+ * Submit role payment helper (alias for recordPaymentCheckout)
+ */
+export async function submitRolePayment(role, paymentDetails = {}) {
+  return recordPaymentCheckout({ role, ...paymentDetails });
+}
 
-  const existingReviews = getLocalStoredReviews();
-  const updatedReviews = [reviewRequest, ...existingReviews];
-  setLocalStoredReviews(updatedReviews);
-
-  // Update session
-  if (typeof window !== "undefined") {
-    try {
-      const stored = sessionStorage.getItem("ulavan_user") || localStorage.getItem("ulavan_registered_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const updated = {
-          ...parsed,
-          activeRole: role,
-          pendingPaymentId: paymentRecord.id,
-          pendingTransactionId: txId,
-          [`isPaid_${role}`]: false, // Not yet activated until admin approval
-          [`paymentStatus_${role}`]: "PENDING_REVIEW",
-        };
-        sessionStorage.setItem("ulavan_user", JSON.stringify(updated));
-        sessionStorage.setItem("ulavan_latest_payment_id", paymentRecord.id);
-        sessionStorage.setItem("ulavan_latest_tx_id", txId);
-      }
-    } catch (err) {
-      console.error("[PaymentApi] Error updating session:", err);
-    }
+/**
+ * Get user payment history strictly from backend
+ */
+export async function getPaymentHistory() {
+  const res = await apiFetch("/api/v1/payments/history", { method: "GET" });
+  if (res.success && Array.isArray(res.data)) {
+    return {
+      success: true,
+      data: res.data,
+    };
   }
-
   return {
-    success: true,
-    data: paymentRecord,
-    isMock: apiRes.isMock,
-    source: apiRes.source,
+    success: false,
+    data: [],
+    error: res.error || "Failed to fetch payment history.",
   };
 }
 
 /**
- * Fetch all admin review requests with optional filter
+ * Get pending payments for admin review strictly from backend
  */
-export async function getAdminPaymentReviews(statusFilter = "ALL") {
-  const localReviews = getLocalStoredReviews();
-  const filtered = localReviews.filter((r) => {
-    if (statusFilter === "ALL") return true;
-    return r.reviewStatus === statusFilter;
-  });
-
-  const res = await apiFetch(
-    `/api/v1/admin/payments?status=${statusFilter}`,
-    { method: "GET" },
-    filtered
-  );
-
+export async function getAdminPendingPayments() {
+  const res = await apiFetch("/api/v1/admin/payments/review", { method: "GET" });
+  if (res.success && Array.isArray(res.data)) {
+    return {
+      success: true,
+      data: res.data,
+    };
+  }
   return {
-    success: true,
-    data: res.data || filtered,
-    isMock: res.isMock,
+    success: false,
+    data: [],
+    error: res.error || "Failed to fetch pending reviews.",
   };
 }
 
 /**
- * STAGE 5: Admin Approves Payment Review
+ * Admin approves payment strictly on backend
  */
-export async function approvePaymentReview(reviewId, remarks = "", reviewerName = "Admin Officer") {
-  const nowIso = new Date().toISOString();
-  const reviews = getLocalStoredReviews();
-  const payments = getLocalStoredPayments();
-
-  let targetReview = null;
-  const updatedReviews = reviews.map((r) => {
-    if (r.id === reviewId) {
-      targetReview = {
-        ...r,
-        reviewStatus: "APPROVED",
-        reviewedBy: reviewerName,
-        reviewedAt: nowIso,
-        remarks: remarks || "Payment reconciled and verified against bank gateway logs.",
-        refundFlag: false,
-      };
-      return targetReview;
-    }
-    return r;
+export async function adminApprovePayment(paymentId, reviewDetails = {}) {
+  return apiFetch(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/approve`, {
+    method: "POST",
+    body: JSON.stringify(reviewDetails),
   });
-
-  if (!targetReview) {
-    return { success: false, error: "Review request not found." };
-  }
-
-  // Update corresponding payment record
-  let targetPayment = null;
-  const updatedPayments = payments.map((p) => {
-    if (p.id === targetReview.paymentId || p.transactionId === targetReview.transactionId) {
-      targetPayment = {
-        ...p,
-        paymentStatus: "APPROVED",
-        adminReview: {
-          reviewStatus: "APPROVED",
-          reviewedBy: reviewerName,
-          reviewedAt: nowIso,
-          remarks: remarks || "Payment reconciled and verified against bank gateway logs.",
-          refundFlag: false,
-        },
-      };
-      return targetPayment;
-    }
-    return p;
-  });
-
-  // Save changes locally
-  setLocalStoredReviews(updatedReviews);
-  setLocalStoredPayments(updatedPayments);
-
-  // Update user session to unlock Stage 5B (Business Category and Detailed Onboarding)
-  if (typeof window !== "undefined") {
-    try {
-      const stored = sessionStorage.getItem("ulavan_user") || localStorage.getItem("ulavan_registered_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const role = targetReview.role;
-        const updated = {
-          ...parsed,
-          [`isPaid_${role}`]: true,
-          [`paymentStatus_${role}`]: "APPROVED",
-          isPaid: true,
-          status: "active",
-        };
-        sessionStorage.setItem("ulavan_user", JSON.stringify(updated));
-        sessionStorage.setItem("ulavan_registered_user", JSON.stringify(updated));
-        localStorage.setItem("ulavan_registered_user", JSON.stringify(updated));
-      }
-    } catch (err) {
-      console.error("[PaymentApi] Error updating session on approval:", err);
-    }
-  }
-
-  // Dispatch to backend API
-  const apiRes = await apiFetch(
-    `/api/v1/admin/payments/${reviewId}/approve`,
-    {
-      method: "POST",
-      body: JSON.stringify({ reviewId, remarks, reviewerName }),
-    },
-    targetReview
-  );
-
-  return {
-    success: true,
-    data: { review: targetReview, payment: targetPayment },
-    isMock: apiRes.isMock,
-  };
 }
 
 /**
- * STAGE 5: Admin Rejects Payment Review
+ * Admin rejects payment strictly on backend
  */
-export async function rejectPaymentReview(reviewId, rejectionReason = "Reference mismatch", reviewerName = "Admin Officer") {
-  const nowIso = new Date().toISOString();
-  const reviews = getLocalStoredReviews();
-  const payments = getLocalStoredPayments();
-
-  let targetReview = null;
-  const updatedReviews = reviews.map((r) => {
-    if (r.id === reviewId) {
-      targetReview = {
-        ...r,
-        reviewStatus: "REJECTED",
-        reviewedBy: reviewerName,
-        reviewedAt: nowIso,
-        remarks: rejectionReason,
-        refundFlag: true,
-      };
-      return targetReview;
-    }
-    return r;
+export async function adminRejectPayment(paymentId, rejectionDetails = {}) {
+  return apiFetch(`/api/v1/admin/payments/${encodeURIComponent(paymentId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify(rejectionDetails),
   });
-
-  if (!targetReview) {
-    return { success: false, error: "Review request not found." };
-  }
-
-  // Update payment record
-  let targetPayment = null;
-  const updatedPayments = payments.map((p) => {
-    if (p.id === targetReview.paymentId || p.transactionId === targetReview.transactionId) {
-      targetPayment = {
-        ...p,
-        paymentStatus: "REJECTED",
-        adminReview: {
-          reviewStatus: "REJECTED",
-          reviewedBy: reviewerName,
-          reviewedAt: nowIso,
-          remarks: rejectionReason,
-          refundFlag: true,
-        },
-      };
-      return targetPayment;
-    }
-    return p;
-  });
-
-  setLocalStoredReviews(updatedReviews);
-  setLocalStoredPayments(updatedPayments);
-
-  // Update user session
-  if (typeof window !== "undefined") {
-    try {
-      const stored = sessionStorage.getItem("ulavan_user") || localStorage.getItem("ulavan_registered_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const role = targetReview.role;
-        const updated = {
-          ...parsed,
-          [`isPaid_${role}`]: false,
-          [`paymentStatus_${role}`]: "REJECTED",
-          [`rejectionReason_${role}`]: rejectionReason,
-        };
-        sessionStorage.setItem("ulavan_user", JSON.stringify(updated));
-      }
-    } catch (err) {
-      console.error("[PaymentApi] Error updating session on rejection:", err);
-    }
-  }
-
-  const apiRes = await apiFetch(
-    `/api/v1/admin/payments/${reviewId}/reject`,
-    {
-      method: "POST",
-      body: JSON.stringify({ reviewId, rejectionReason, reviewerName }),
-    },
-    targetReview
-  );
-
-  return {
-    success: true,
-    data: { review: targetReview, payment: targetPayment },
-    isMock: apiRes.isMock,
-  };
 }
 
 /**
- * Check if the active user's role has an approved payment
+ * Verify payment status strictly on backend
  */
-export function checkRolePaymentStatus(role) {
-  if (typeof window === "undefined") return { approved: false, status: "NONE" };
-  try {
-    const raw = sessionStorage.getItem("ulavan_user") || localStorage.getItem("ulavan_registered_user");
-    if (!raw) return { approved: false, status: "NONE" };
-    const user = JSON.parse(raw);
-    const targetRole = (role || user.role || "BUYER").toUpperCase();
-
-    if (user[`isPaid_${targetRole}`] === true || user[`paymentStatus_${targetRole}`] === "APPROVED") {
-      return { approved: true, status: "APPROVED" };
-    }
-    if (user[`paymentStatus_${targetRole}`] === "PENDING_REVIEW") {
-      return { approved: false, status: "PENDING_REVIEW" };
-    }
-    if (user[`paymentStatus_${targetRole}`] === "REJECTED") {
-      return { approved: false, status: "REJECTED", reason: user[`rejectionReason_${targetRole}`] };
-    }
-
-    // Check payments list directly
-    const payments = getLocalStoredPayments();
-    const match = payments.find((p) => p.role === targetRole && (p.userId === user.id || p.userEmail === user.email));
-    if (match) {
-      return {
-        approved: match.paymentStatus === "APPROVED",
-        status: match.paymentStatus,
-        paymentRecord: match,
-      };
-    }
-  } catch (err) {
-    console.error("[PaymentApi] Error checking role payment status:", err);
-  }
-  return { approved: false, status: "NONE" };
+export async function verifyPayment(paymentId) {
+  return apiFetch(`/api/v1/payments/${encodeURIComponent(paymentId)}/verify`, {
+    method: "GET",
+  });
 }
 
+/**
+ * Local stored payments helper
+ */
+export function getLocalStoredPayments() {
+  return [];
+}

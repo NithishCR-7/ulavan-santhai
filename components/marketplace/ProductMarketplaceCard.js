@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SproutIcon } from "./Icons";
 
 export default function ProductMarketplaceCard({ product }) {
   const displayImage =
@@ -29,7 +30,7 @@ export default function ProductMarketplaceCard({ product }) {
             </span>
             {product.organicStatus && product.organicStatus !== "Conventional Farming" && (
               <span className="px-2 py-1 rounded-full bg-emerald-600/90 backdrop-blur-xs text-white text-[10px] font-bold shadow-xs flex items-center gap-1">
-                <span>🌿</span>
+                <SproutIcon className="w-3 h-3 text-white" />
                 <span>Organic</span>
               </span>
             )}

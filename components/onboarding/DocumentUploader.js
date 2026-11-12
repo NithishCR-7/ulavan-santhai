@@ -78,7 +78,6 @@ export default function DocumentUploader({
           fileName: file.name,
           fileSize: file.size,
           url: result.data?.url || "",
-          isMockFallback: result.isMockFallback,
         });
       }, 300);
     } catch (err) {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { SproutIcon, CloseIcon } from "./Icons";
 
 export default function ImageGallery({ images = [], title = "Agricultural Harvest Produce" }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -38,7 +39,7 @@ export default function ImageGallery({ images = [], title = "Agricultural Harves
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-linear-to-br from-emerald-50 to-[#E8F0E3] text-[#174B35] text-center">
-            <span className="text-4xl mb-2">🌾</span>
+            <SproutIcon className="w-8 h-8 mb-2 text-[#174B35]" />
             <span className="text-sm font-bold">{title}</span>
             <span className="text-xs text-gray-500 mt-1">Verified Farm Lot Photograph</span>
           </div>
@@ -81,7 +82,7 @@ export default function ImageGallery({ images = [], title = "Agricultural Harves
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 bg-gray-100">
-                    🌾
+                    <SproutIcon className="w-4 h-4 text-gray-400" />
                   </div>
                 )}
               </button>
@@ -113,7 +114,7 @@ export default function ImageGallery({ images = [], title = "Agricultural Harves
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white text-white hover:text-gray-900 flex items-center justify-center font-bold text-lg backdrop-blur-xs transition-colors cursor-pointer"
               aria-label="Close Fullscreen View"
             >
-              ✕
+              <CloseIcon className="w-5 h-5" />
             </button>
             <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-xs text-white p-3 rounded-xl text-xs flex items-center justify-between">
               <span className="font-bold truncate mr-2">{title}</span>

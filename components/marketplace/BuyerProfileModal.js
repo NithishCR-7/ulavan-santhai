@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSessionUser } from "@/services/sessionAuth";
 import { BRD_CATEGORIES, BUYER_TYPES } from "@/data/marketplaceCatalog";
+import { CloseIcon, CheckCircleIcon, CheckIcon } from "./Icons";
 
 export default function BuyerProfileModal({ isOpen, onClose }) {
   const sessionUser = useSessionUser();
@@ -138,7 +139,7 @@ export default function BuyerProfileModal({ isOpen, onClose }) {
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -146,8 +147,9 @@ export default function BuyerProfileModal({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto py-5 pr-1">
           <form onSubmit={handleSave} className="space-y-4">
             {isSaved && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[#174B35] text-xs font-bold text-center animate-in fade-in">
-                ✓ Business profile updated successfully!
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[#174B35] text-xs font-bold text-center flex items-center justify-center gap-1.5 animate-in fade-in">
+                <CheckCircleIcon className="w-4 h-4 text-[#174B35]" />
+                <span>Business profile updated successfully!</span>
               </div>
             )}
 
@@ -319,7 +321,11 @@ export default function BuyerProfileModal({ isOpen, onClose }) {
                       }`}
                     >
                       <span className="truncate">{cat.shortName || cat.name}</span>
-                      <span className="text-[11px]">{isChecked ? "✓" : "+"}</span>
+                      {isChecked ? (
+                        <CheckIcon className="w-3.5 h-3.5 text-white" />
+                      ) : (
+                        <span className="text-[11px]">+</span>
+                      )}
                     </button>
                   );
                 })}

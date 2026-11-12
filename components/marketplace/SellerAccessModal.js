@@ -6,6 +6,7 @@ import {
   getBuyerAccessHistory,
   topUpBuyerQuota,
 } from "@/services/sellerAccessApi";
+import { CloseIcon, InfoIcon, SearchIcon } from "./Icons";
 
 export function SellerAccessCard({ onOpenDetails, className = "" }) {
   const [access, setAccess] = useState({
@@ -153,7 +154,7 @@ export default function SellerAccessModal({ isOpen, onClose }) {
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -187,7 +188,7 @@ export default function SellerAccessModal({ isOpen, onClose }) {
           {/* Rules Explanation Callout */}
           <div className="p-3.5 bg-[#F5F5EB] rounded-2xl border border-gray-200 text-xs text-gray-700 space-y-1.5">
             <div className="font-bold text-[#174B35] flex items-center gap-1.5">
-              <span>ℹ️</span>
+              <InfoIcon className="w-4 h-4 text-[#174B35]" />
               <span>How Seller Access Works</span>
             </div>
             <ul className="list-disc pl-4 space-y-1 text-gray-600 text-[11px]">
@@ -206,7 +207,7 @@ export default function SellerAccessModal({ isOpen, onClose }) {
 
             {history.length === 0 ? (
               <div className="p-6 text-center rounded-2xl border border-dashed border-gray-300 bg-gray-50/50">
-                <span className="text-2xl block mb-1">🔍</span>
+                <SearchIcon className="w-6 h-6 text-gray-400 mx-auto mb-1" />
                 <p className="text-xs font-semibold text-gray-700">No sellers unlocked yet</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">
                   Browse products and click &quot;View Supplier&quot; to unlock their direct commercial contact details.

@@ -12,7 +12,8 @@ import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
 import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
 import BuyerProfileModal from "@/components/marketplace/BuyerProfileModal";
 import HelpModal from "@/components/marketplace/HelpModal";
-import { B2B_CATALOG_PRODUCTS, SELLER_DIRECTORY } from "@/data/marketplaceCatalog";
+import { getMarketplaceProducts } from "@/services/marketplaceApi";
+import { HeartIcon } from "@/components/marketplace/Icons";
 
 export default function SavedProductsPage() {
   return (
@@ -42,19 +43,41 @@ function SavedProductsContent() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  const [allProducts, setAllProducts] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchProducts() {
+      try {
+        const res = await getMarketplaceProducts();
+        if (isMounted && res.success && Array.isArray(res.data)) {
+          setAllProducts(res.data);
+        }
+      } catch {}
+      finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    fetchProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const loadSaved = () => {
     try {
       const raw = localStorage.getItem("ulavan_saved_products");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          // Resolve any IDs to full products if saved as string IDs
-          const fullList = parsed.map((item) => {
-            if (typeof item === "string") {
-              return B2B_CATALOG_PRODUCTS.find((p) => p.id === item) || null;
-            }
-            return item;
-          }).filter(Boolean);
+          const fullList = parsed
+            .map((item) => {
+              if (typeof item === "string") {
+                return allProducts.find((p) => p.id === item) || null;
+              }
+              return item;
+            })
+            .filter(Boolean);
           setSavedProducts(fullList);
         }
       } else {
@@ -62,8 +85,6 @@ function SavedProductsContent() {
       }
     } catch (e) {
       console.error(e);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -72,7 +93,7 @@ function SavedProductsContent() {
     const handleStorage = () => loadSaved();
     window.addEventListener("ulavan_saved_changed", handleStorage);
     return () => window.removeEventListener("ulavan_saved_changed", handleStorage);
-  }, []);
+  }, [allProducts]);
 
   const handleRemoveSaved = (prod) => {
     try {
@@ -80,7 +101,7 @@ function SavedProductsContent() {
       let list = raw ? JSON.parse(raw) : [];
       list = list.filter((item) => (typeof item === "string" ? item !== prod.id : item.id !== prod.id));
       localStorage.setItem("ulavan_saved_products", JSON.stringify(list));
-      setSavedProducts(list.map((item) => (typeof item === "string" ? B2B_CATALOG_PRODUCTS.find((p) => p.id === item) : item)).filter(Boolean));
+      setSavedProducts(list.map((item) => (typeof item === "string" ? allProducts.find((p) => p.id === item) : item)).filter(Boolean));
       window.dispatchEvent(new Event("ulavan_saved_changed"));
     } catch (e) {}
   };
@@ -130,8 +151,8 @@ function SavedProductsContent() {
         ) : savedProducts.length === 0 ? (
           /* Empty State */
           <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 space-y-4 max-w-lg mx-auto">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
-              🔖
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-[#174B35]">
+              <HeartIcon className="w-8 h-8 text-[#174B35]" />
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">

@@ -58,74 +58,43 @@ function LoginContent() {
         }
       }
 
-      // 2. Attempt API login
-      let apiSuccess = false;
-      let userData = null;
-      let token = null;
+      // 2. Strict Backend API login
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: identifier.trim().toLowerCase(),
+          email: identifier.includes("@") ? identifier.trim().toLowerCase() : undefined,
+          mobile: !identifier.includes("@") ? identifier.trim() : undefined,
+          password,
+        }),
+      });
 
-      try {
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            identifier: identifier.trim().toLowerCase(),
-            email: identifier.includes("@") ? identifier.trim().toLowerCase() : undefined,
-            mobile: !identifier.includes("@") ? identifier.trim() : undefined,
-            password,
-          }),
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data || data.success === false) {
+        setPopup({
+          isOpen: true,
+          type: "error",
+          title: "Login Failed",
+          message:
+            data?.message ||
+            data?.error ||
+            "Unable to log in. Please verify your credentials and ensure the backend service is reachable.",
+          targetUrl: "",
         });
-
-        if (response.ok) {
-          const data = await response.json().catch(() => null);
-          if (data && data.success !== false) {
-            apiSuccess = true;
-            userData = {
-              ...data.user,
-              sellerOnboarded: Boolean(data.user?.sellerOnboarded),
-              buyerOnboarded: Boolean(data.user?.buyerOnboarded),
-            };
-            token = data.token;
-          }
-        }
-      } catch {
-        // Backend offline or local network proxy
+        setIsLoading(false);
+        return;
       }
 
-      // 3. Fallback resolution if API is offline
-      if (!apiSuccess) {
-        // Validate password against stored user if matches identifier
-        const idClean = identifier.trim().toLowerCase();
-        const matchesStored =
-          storedUser &&
-          (storedUser.email?.toLowerCase() === idClean ||
-            storedUser.mobile === idClean ||
-            storedUser.username?.toLowerCase() === idClean);
-
-        if (matchesStored && storedUser.password && storedUser.password !== password) {
-          setPopup({
-            isOpen: true,
-            type: "error",
-            title: "Invalid Credentials",
-            message: "The password you entered does not match our records. Please try again.",
-            targetUrl: "",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Authenticate user
-        userData = storedUser || {
-          name: identifier.split("@")[0].replace(/[._]/g, " ").toUpperCase(),
-          username: identifier.split("@")[0],
-          email: identifier.includes("@") ? identifier.trim().toLowerCase() : `${identifier}@ulavansanthai.in`,
-          mobile: !identifier.includes("@") ? identifier.trim() : "9876543210",
-          role: "unassigned",
-          onboarded: false,
-          status: "active",
-        };
-      }
+      const userData = {
+        ...data.user,
+        sellerOnboarded: Boolean(data.user?.sellerOnboarded),
+        buyerOnboarded: Boolean(data.user?.buyerOnboarded),
+      };
+      const token = data.token;
 
       // Check where user should be directed:
       // Always direct user to role selection / switching screen (/get-started)

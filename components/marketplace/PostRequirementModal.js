@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSessionUser } from "@/services/sessionAuth";
 import { createEnquiry } from "@/services/enquiryApi";
 import { BRD_CATEGORIES, QUALITY_GRADES } from "@/data/marketplaceCatalog";
+import { CloseIcon, CheckCircleIcon } from "./Icons";
 
 export default function PostRequirementModal({ isOpen, onClose }) {
   const router = useRouter();
@@ -132,7 +133,7 @@ export default function PostRequirementModal({ isOpen, onClose }) {
             onClick={handleResetAndClose}
             className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 
@@ -141,8 +142,8 @@ export default function PostRequirementModal({ isOpen, onClose }) {
           {confirmation ? (
             /* Confirmation Screen */
             <div className="space-y-5 text-center py-4">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#174B35] flex items-center justify-center text-2xl mx-auto shadow-sm">
-                ✓
+              <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#174B35] flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircleIcon className="w-8 h-8 text-[#174B35]" />
               </div>
               <div>
                 <h4 className="text-lg font-black text-gray-900">

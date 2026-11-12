@@ -1,13 +1,27 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BRD_CATEGORIES } from "@/data/marketplaceCatalog";
 import { useSessionUser } from "@/services/sessionAuth";
 import { getBuyerEnquiries } from "@/services/enquiryApi";
 import { getBuyerAccessEntitlement } from "@/services/sellerAccessApi";
+import {
+  SearchIcon,
+  HeartIcon,
+  MailIcon,
+  BellIcon,
+  ChevronDownIcon,
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  CloseIcon,
+  SproutIcon,
+  CheckIcon,
+  UserIcon,
+  CreditCardIcon,
+  HelpCircleIcon,
+} from "./Icons";
 
 export default function BuyerHeader({
   initialSearch = "",
@@ -78,40 +92,36 @@ export default function BuyerHeader({
         }
       } catch (e) {}
 
-      // Seller Access Quota
+      // Quota remaining
       try {
-        const quotaRes = await getBuyerAccessEntitlement();
-        if (quotaRes.success && quotaRes.data) {
-          setQuotaRemaining(quotaRes.data.quotaRemaining ?? 10);
+        const buyerId = sessionUser?.id || sessionUser?.applicationId || "BUY_CURRENT_USER";
+        const ent = await getBuyerAccessEntitlement(buyerId);
+        if (ent && typeof ent.viewsRemaining === "number") {
+          setQuotaRemaining(ent.viewsRemaining);
         }
       } catch (e) {}
     };
 
     updateCounts();
 
-    // Event listener for storage changes
-    const handleStorage = () => updateCounts();
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("ulavan_saved_changed", handleStorage);
-    window.addEventListener("ulavan_access_changed", handleStorage);
-    window.addEventListener("ulavan_enquiry_submitted", handleStorage);
+    const handleSavedChanged = () => updateCounts();
+    const handleEnquirySubmitted = () => updateCounts();
+    window.addEventListener("ulavan_saved_changed", handleSavedChanged);
+    window.addEventListener("ulavan_enquiry_submitted", handleEnquirySubmitted);
 
     return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("ulavan_saved_changed", handleStorage);
-      window.removeEventListener("ulavan_access_changed", handleStorage);
-      window.removeEventListener("ulavan_enquiry_submitted", handleStorage);
+      window.removeEventListener("ulavan_saved_changed", handleSavedChanged);
+      window.removeEventListener("ulavan_enquiry_submitted", handleEnquirySubmitted);
     };
   }, [sessionUser]);
 
-  // Click outside listener for profile dropdown
+  // Close profile dropdown on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
+    function handleClickOutside(event) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
-        setIsAlertsOpen(false);
       }
-    };
+    }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -167,26 +177,28 @@ export default function BuyerHeader({
         {/* Middle: Primary Navigation Links */}
         <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-gray-600">
           <Link
+            href="/buyer/dashboard"
+            className="hover:text-[#174B35] transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link
             href="/marketplace"
             className="text-[#174B35] font-bold border-b-2 border-[#174B35] pb-0.5"
           >
             Marketplace
           </Link>
-          <Link href="/about" className="hover:text-[#174B35] transition-colors">
-            About Us
+          <Link href="/buyer/categories" className="hover:text-[#174B35] transition-colors">
+            Categories
           </Link>
-          <Link href="/onboarding?role=seller&step=1" className="hover:text-[#174B35] transition-colors">
-            For Sellers
+          <Link href="/buyer/sellers" className="hover:text-[#174B35] transition-colors">
+            Suppliers
           </Link>
-          <button
-            type="button"
-            onClick={() => onOpenHelp && onOpenHelp()}
-            className="hover:text-[#174B35] transition-colors cursor-pointer"
+          <Link
+            href="/buyer/help"
+            className="hover:text-[#174B35] transition-colors"
           >
-            Resources
-          </button>
-          <Link href="/contact" className="hover:text-[#174B35] transition-colors">
-            Contact
+            Help &amp; Resources
           </Link>
         </nav>
 
@@ -209,21 +221,17 @@ export default function BuyerHeader({
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#174B35] cursor-pointer"
               title="Search catalog"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <SearchIcon className="w-4 h-4" />
             </button>
           </form>
 
           {/* Quick links: Saved & Enquiries */}
           <Link
-            href="/marketplace/saved"
+            href="/buyer/saved"
             className="p-1.5 rounded-full text-gray-600 hover:text-[#174B35] hover:bg-gray-100 transition-colors relative"
             title="Saved Products"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
+            <HeartIcon className="w-5 h-5" />
             {savedCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
                 {savedCount}
@@ -236,9 +244,7 @@ export default function BuyerHeader({
             className="p-1.5 rounded-full text-gray-600 hover:text-[#174B35] hover:bg-gray-100 transition-colors relative"
             title="My Enquiries"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
+            <MailIcon className="w-5 h-5" />
             {enquiryCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#174B35] text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
                 {enquiryCount}
@@ -258,9 +264,7 @@ export default function BuyerHeader({
               title="Platform Alerts & Notifications"
             >
               <div className="relative">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+                <BellIcon className="w-5 h-5" />
                 {alertCount > 0 && (
                   <span className="absolute -top-1.5 -right-2 bg-amber-500 text-white text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center shadow-xs">
                     {alertCount}
@@ -286,7 +290,10 @@ export default function BuyerHeader({
                 <div className="divide-y divide-gray-100 text-xs">
                   <div className="py-2.5 space-y-1">
                     <div className="font-bold text-gray-900 flex items-center justify-between">
-                      <span>🌱 New Harvest Available</span>
+                      <span className="flex items-center gap-1.5">
+                        <SproutIcon className="w-3.5 h-3.5 text-[#174B35]" />
+                        <span>New Harvest Available</span>
+                      </span>
                       <span className="text-[10px] text-gray-400">10m ago</span>
                     </div>
                     <p className="text-gray-600 text-[11px]">
@@ -295,7 +302,10 @@ export default function BuyerHeader({
                   </div>
                   <div className="py-2.5 space-y-1">
                     <div className="font-bold text-gray-900 flex items-center justify-between">
-                      <span>✓ Seller Views Available</span>
+                      <span className="flex items-center gap-1.5">
+                        <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Seller Views Available</span>
+                      </span>
                       <span className="text-[10px] text-gray-400">Active</span>
                     </div>
                     <p className="text-gray-600 text-[11px]">
@@ -308,7 +318,7 @@ export default function BuyerHeader({
           </div>
 
           {/* 4. Profile Dropdown (My Seller Access, My Business Profile, Help & Support) */}
-          <div className="relative">
+          <div className="relative" ref={profileRef}>
             <button
               type="button"
               onClick={() => {
@@ -329,9 +339,7 @@ export default function BuyerHeader({
                   {quotaRemaining} Views Left
                 </span>
               </div>
-              <svg className="w-3.5 h-3.5 text-gray-500 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDownIcon className="w-3.5 h-3.5 text-gray-500 hidden sm:block" />
             </button>
 
             {/* Profile Dropdown Menu */}
@@ -341,51 +349,54 @@ export default function BuyerHeader({
                 <div className="p-3 bg-[#F5F5EB] rounded-xl mb-1 space-y-0.5">
                   <div className="font-extrabold text-gray-900">{sessionUser?.name || "Buyer Member"}</div>
                   <div className="text-[11px] text-gray-500 truncate">{sessionUser?.email || "buyer@ulavansanthai.in"}</div>
-                  <div className="text-[10px] text-emerald-700 font-bold uppercase mt-1">
-                    ✓ Verified Platform Member (₹365 Paid)
+                  <div className="text-[10px] text-emerald-700 font-bold uppercase mt-1 flex items-center gap-1">
+                    <ShieldCheckIcon className="w-3 h-3 text-emerald-700" />
+                    <span>Verified Platform Member (Rs 365 Paid)</span>
                   </div>
                 </div>
 
                 {/* Menu Action Items */}
                 <div className="space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileOpen(false);
-                      if (onOpenSellerAccess) onOpenSellerAccess();
-                      else router.push("/marketplace?view=access");
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-[#E8F0E3] hover:text-[#174B35] font-bold text-gray-700 flex items-center justify-between cursor-pointer transition-colors"
+                  <Link
+                    href="/buyer/dashboard"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
                   >
-                    <span>My Seller Access</span>
+                    <UserIcon className="w-4 h-4 text-gray-500" />
+                    <span>Buyer Dashboard</span>
+                  </Link>
+
+                  <Link
+                    href="/buyer/subscription"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#E8F0E3] hover:text-[#174B35] font-bold text-gray-700 flex items-center justify-between cursor-pointer transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CreditCardIcon className="w-4 h-4 text-gray-500" />
+                      <span>My Seller Access</span>
+                    </span>
                     <span className="px-2 py-0.5 rounded-full bg-[#174B35] text-white text-[10px] font-black">
                       {quotaRemaining} left
                     </span>
-                  </button>
+                  </Link>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileOpen(false);
-                      if (onOpenProfile) onOpenProfile();
-                      else router.push("/dashboard?role=buyer");
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-100 font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
+                  <Link
+                    href="/buyer/profile"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
                   >
+                    <UserIcon className="w-4 h-4 text-gray-500" />
                     <span>My Business Profile</span>
-                  </button>
+                  </Link>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileOpen(false);
-                      if (onOpenHelp) onOpenHelp();
-                      else router.push("/marketplace?view=help");
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-100 font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
+                  <Link
+                    href="/buyer/help"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-100 font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
                   >
+                    <HelpCircleIcon className="w-4 h-4 text-gray-500" />
                     <span>Help &amp; Support</span>
-                  </button>
+                  </Link>
 
                   <div className="border-t border-gray-100 my-1 pt-1 space-y-0.5">
                     <Link
@@ -428,17 +439,17 @@ export default function BuyerHeader({
             type="submit"
             className="h-9 px-3.5 bg-[#174B35] text-white text-xs font-bold"
           >
-            🔍
+            <SearchIcon className="w-3.5 h-3.5 text-white" />
           </button>
         </form>
       </div>
 
       {/* ======================================================== */}
-      {/* ROW 2: The 4 BRD Categories | Verified | Post Req       */}
+      {/* ROW 2: The 5 BRD Categories | Verified | Post Req       */}
       {/* ======================================================== */}
       <div className="bg-[#F8FAF7] border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto no-scrollbar py-1.5 sm:py-2 gap-4 text-xs font-bold">
-          {/* Left: The Four BRD Categories with Dropdown */}
+          {/* Left: The Five BRD Categories with Dropdown */}
           <div className="flex items-center gap-1 sm:gap-4 shrink-0">
             {BRD_CATEGORIES.map((cat) => {
               const isDropdownActive = activeCategoryDropdown === cat.name;
@@ -451,31 +462,43 @@ export default function BuyerHeader({
                 >
                   <Link
                     href={`/marketplace?category=${encodeURIComponent(cat.name)}`}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-gray-700 hover:text-[#174B35] hover:bg-white transition-colors shrink-0"
+                    className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                      searchCategory === cat.name
+                        ? "bg-[#174B35] text-white"
+                        : "text-gray-700 hover:text-[#174B35] hover:bg-white"
+                    }`}
                   >
-                    <span>{cat.icon}</span>
-                    <span className="whitespace-nowrap">{cat.name}</span>
-                    <svg className="w-3 h-3 text-gray-400 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span>{cat.name}</span>
+                    <span className="text-[10px] opacity-70">({cat.count})</span>
+                    <ChevronDownIcon className="w-3 h-3 opacity-60" />
                   </Link>
 
-                  {/* Subcategories Dropdown Panel */}
+                  {/* Mega-Dropdown for Subcategories */}
                   {isDropdownActive && (
-                    <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-xl border border-gray-200 p-2 z-50 animate-in fade-in duration-100 text-xs">
-                      <div className="text-[10px] font-bold text-gray-400 uppercase px-2 py-1">
-                        Subcategories
+                    <div className="absolute left-0 top-full mt-1 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50 animate-in fade-in duration-150 space-y-2">
+                      <div className="pb-1 border-b border-gray-100">
+                        <div className="font-extrabold text-gray-900 text-xs">{cat.name}</div>
+                        <div className="text-[10px] text-gray-400">{cat.tamilName}</div>
                       </div>
-                      {cat.subcategories.map((sub) => (
+                      <div className="space-y-1">
+                        {cat.subcategories.map((sub) => (
+                          <Link
+                            key={sub}
+                            href={`/marketplace?category=${encodeURIComponent(cat.name)}&sub=${encodeURIComponent(sub)}`}
+                            className="block px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 hover:text-[#174B35] text-gray-600 text-xs font-medium transition-colors"
+                          >
+                            {sub}
+                          </Link>
+                        ))}
+                      </div>
+                      <div className="pt-1.5 border-t border-gray-100">
                         <Link
-                          key={sub}
-                          href={`/marketplace?category=${encodeURIComponent(cat.name)}&subcategory=${encodeURIComponent(sub)}`}
-                          onClick={() => setActiveCategoryDropdown(null)}
-                          className="block px-2.5 py-1.5 rounded-lg text-gray-700 hover:bg-[#E8F0E3] hover:text-[#174B35] transition-colors"
+                          href={`/buyer/categories?id=${cat.id}`}
+                          className="text-[11px] font-bold text-[#174B35] hover:underline block text-center"
                         >
-                          {sub}
+                          View Full Category Guide &rarr;
                         </Link>
-                      ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -489,7 +512,7 @@ export default function BuyerHeader({
               href="/marketplace?verifiedOnly=true"
               className="px-3 py-1.5 rounded-lg text-gray-700 hover:text-[#174B35] hover:bg-white transition-colors flex items-center gap-1.5 whitespace-nowrap"
             >
-              <span className="text-[#174B35]">✓</span>
+              <CheckCircleIcon className="w-3.5 h-3.5 text-[#174B35]" />
               <span>Verified Suppliers</span>
             </Link>
 
@@ -499,7 +522,7 @@ export default function BuyerHeader({
               className="px-3.5 py-1.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-extrabold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               <span>+</span>
-              <span>Post a Requirement</span>
+              <span>Post Requirement</span>
             </button>
           </div>
         </div>
@@ -518,7 +541,7 @@ export default function BuyerHeader({
                 onClick={() => setIsLocationModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 font-bold flex items-center justify-center"
               >
-                ✕
+                <CloseIcon className="w-4 h-4" />
               </button>
             </div>
             <p className="text-xs text-gray-500">
@@ -540,25 +563,24 @@ export default function BuyerHeader({
                   type="text"
                   value={editPincode}
                   onChange={(e) => setEditPincode(e.target.value)}
-                  maxLength={6}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs text-gray-900 font-semibold focus:ring-2 focus:ring-[#174B35] outline-none"
                 />
               </div>
             </div>
-            <div className="pt-2 flex items-center gap-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setIsLocationModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveLocation}
-                className="flex-1 py-2.5 rounded-xl bg-[#174B35] hover:bg-[#103A29] text-white text-xs font-bold shadow-sm"
+                className="px-5 py-2 rounded-xl bg-[#174B35] text-white text-xs font-bold hover:bg-[#103A29] cursor-pointer"
               >
-                Update Location
+                Save
               </button>
             </div>
           </div>
@@ -567,4 +589,3 @@ export default function BuyerHeader({
     </header>
   );
 }
-

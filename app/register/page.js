@@ -106,21 +106,15 @@ export default function BasicRegistrationPage() {
         setOtp(["", "", "", "", "", ""]);
         setOtpError("");
         setResendCooldown(30);
-      } else if (res.status === 404 || res.status >= 500) {
-        // Safe offline local dev fallback: open email OTP modal for testing
-        setIsEmailModalOpen(true);
-        setOtp(["", "", "", "", "", ""]);
-        setOtpError("");
-        setResendCooldown(30);
       } else {
-        setFormError(data?.message || "Registration failed. Please check your details.");
+        setFormError(
+          data?.message ||
+          data?.error ||
+          `Registration failed (${res.status}). Please check your details and backend connection.`
+        );
       }
-    } catch {
-      // Backend offline / network unreachable during development: open modal for testing
-      setIsEmailModalOpen(true);
-      setOtp(["", "", "", "", "", ""]);
-      setOtpError("");
-      setResendCooldown(30);
+    } catch (err) {
+      setFormError(err.message || "Unable to reach backend registration service. Please verify backend status.");
     } finally {
       setIsLoading(false);
     }
@@ -151,15 +145,15 @@ export default function BasicRegistrationPage() {
 
       if (res.ok && data?.success !== false) {
         completeRegistrationSuccess();
-      } else if (res.status === 404 || res.status >= 500) {
-        // Dev fallback if backend is offline
-        completeRegistrationSuccess();
       } else {
-        setOtpError(data?.message || "Invalid or expired verification code. Please check your email.");
+        setOtpError(
+          data?.message ||
+          data?.error ||
+          "Invalid or expired verification code. Please check your email."
+        );
       }
-    } catch {
-      // Dev fallback if backend network is unreachable
-      completeRegistrationSuccess();
+    } catch (err) {
+      setOtpError(err.message || "Unable to connect to verification service. Please try again.");
     } finally {
       setIsVerifyingOtp(false);
     }

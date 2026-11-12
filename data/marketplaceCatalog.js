@@ -16,7 +16,7 @@ export const BRD_CATEGORIES = [
     count: 124,
     tamilName: "விவசாய விளைபொருட்கள்",
     description: "Agricultural produce and related products obtained directly from agricultural production (Grains, Pulses, Fruits, Vegetables, Spices, Seeds & Nuts).",
-    icon: "🌾",
+    iconKey: "leaf",
     image: "/images/photographs/carrot-farmer.jpg",
     subcategories: [
       "Paddy & Cereals",
@@ -37,7 +37,7 @@ export const BRD_CATEGORIES = [
     count: 87,
     tamilName: "இயற்கை மற்றும் அங்ககப் பொருட்கள்",
     description: "Organic agricultural and food products certified under NPOP / Jaivik Bharat, supported by applicable documentation.",
-    icon: "🌱",
+    iconKey: "sprout",
     image: "/images/about-farmer-harvest.jpg",
     subcategories: [
       "Certified Organic Grains",
@@ -52,7 +52,7 @@ export const BRD_CATEGORIES = [
     count: 69,
     tamilName: "விவசாய மூலப்பொருட்கள்",
     description: "Agricultural products sourced as bulk inputs for further processing, manufacturing, food preparation, baking, or milling.",
-    icon: "📦",
+    iconKey: "package",
     image: "/images/photographs/paddy-harvest-supplied.png",
     subcategories: [
       "Bulk Milling Paddy",
@@ -67,7 +67,7 @@ export const BRD_CATEGORIES = [
     count: 56,
     tamilName: "மூலப்பொருட்கள் & சேர்க்கைகள்",
     description: "Pure derived ingredients, cold-pressed oils, spice extracts, and food preparation essentials.",
-    icon: "🍶",
+    iconKey: "tag",
     image: "/images/photographs/produce-processing.jpg",
     subcategories: [
       "Cold-Pressed Oils",
@@ -81,7 +81,7 @@ export const BRD_CATEGORIES = [
     count: 74,
     tamilName: "மதிப்புக்கூட்டப்பட்ட பொருட்கள்",
     description: "Products derived from agricultural produce, including flours, starches, sago, and value-added finished goods.",
-    icon: "🥣",
+    iconKey: "building",
     image: "/images/photographs/coconuts.jpg",
     subcategories: [
       "Processed Foods",
@@ -1222,3 +1222,39 @@ export const SELLER_DIRECTORY = [
     description: "Tribal women hunter and collector cooperative sustainably harvesting raw unpasteurised wild rock-bee and multi-flora honey from pristine deciduous forests of Javadi Hills. 100% natural, unfiltered, certified organic.",
   },
 ];
+
+/**
+ * Sort catalog products by criteria & buyer classification recommendation
+ */
+export function sortCatalogProducts(products = [], sortBy = "Relevance", buyerClassification = "All") {
+  const list = [...products];
+  if (sortBy === "price_asc" || sortBy === "Price: Low to High") {
+    return list.sort((a, b) => (Number(a.pricePerUnit) || 0) - (Number(b.pricePerUnit) || 0));
+  }
+  if (sortBy === "price_desc" || sortBy === "Price: High to Low") {
+    return list.sort((a, b) => (Number(b.pricePerUnit) || 0) - (Number(a.pricePerUnit) || 0));
+  }
+  if (sortBy === "moq_asc" || sortBy === "MOQ: Low to High") {
+    return list.sort((a, b) => (Number(a.minOrderQuantity) || 0) - (Number(b.minOrderQuantity) || 0));
+  }
+  if (sortBy === "stock_desc" || sortBy === "Stock: Highest First") {
+    return list.sort((a, b) => (Number(b.availableStock) || 0) - (Number(a.availableStock) || 0));
+  }
+  if (sortBy === "rating_desc" || sortBy === "Highest Rated") {
+    return list.sort((a, b) => (Number(b.sellerRating) || 0) - (Number(a.sellerRating) || 0));
+  }
+  if (sortBy === "newest" || sortBy === "Newest First") {
+    return list.reverse();
+  }
+
+  // Default: Relevance - prioritize items recommended for this buyer classification
+  if (buyerClassification && buyerClassification !== "All") {
+    return list.sort((a, b) => {
+      const matchA = a.recommendedFor?.includes(buyerClassification) ? 1 : 0;
+      const matchB = b.recommendedFor?.includes(buyerClassification) ? 1 : 0;
+      return matchB - matchA;
+    });
+  }
+
+  return list;
+}

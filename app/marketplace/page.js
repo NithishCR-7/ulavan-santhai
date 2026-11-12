@@ -1,35 +1,51 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import BuyerHeader from "@/components/marketplace/BuyerHeader";
-import BottomTabBar from "@/components/marketplace/BottomTabBar";
-import ProductCard from "@/components/marketplace/ProductCard";
 import FilterPanel from "@/components/marketplace/FilterPanel";
-import FilterChips from "@/components/marketplace/FilterChips";
+import ProductCard from "@/components/marketplace/ProductCard";
+import SendEnquiryModal from "@/components/marketplace/SendEnquiryModal";
+import SupplierProfileModal from "@/components/marketplace/SupplierProfileModal";
 import SellerAccessModal from "@/components/marketplace/SellerAccessModal";
 import PostRequirementModal from "@/components/marketplace/PostRequirementModal";
-import SupplierProfileModal from "@/components/marketplace/SupplierProfileModal";
-import SendEnquiryModal from "@/components/marketplace/SendEnquiryModal";
 import BuyerProfileModal from "@/components/marketplace/BuyerProfileModal";
 import HelpModal from "@/components/marketplace/HelpModal";
+import BottomTabBar from "@/components/marketplace/BottomTabBar";
+
 import {
   BRD_CATEGORIES,
-  SELLER_DIRECTORY,
-  B2B_CATALOG_PRODUCTS,
+  sortCatalogProducts,
 } from "@/data/marketplaceCatalog";
 import { getMarketplaceProducts } from "@/services/marketplaceApi";
+import {
+  recordSellerAccess,
+  getBuyerAccessEntitlement,
+} from "@/services/sellerAccessApi";
 import { useSessionUser } from "@/services/sessionAuth";
-import { getLocalBuyerAccessState } from "@/services/sellerAccessApi";
+import {
+  BuildingIcon,
+  UserIcon,
+  PackageIcon,
+  TagIcon,
+  GridIcon,
+  CheckCircleIcon,
+  InfoIcon,
+  FilterIcon,
+  SproutIcon,
+  LeafIcon,
+  ChevronDownIcon,
+  CheckIcon,
+} from "@/components/marketplace/Icons";
 
-export default function BuyerMarketplacePage() {
+export default function MarketplacePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F8FAF7] flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
-          Loading Ulavan Santhai Agricultural Marketplace...
+        <div className="min-h-screen bg-[#F5F5EB]/60 flex items-center justify-center p-8 text-xs text-gray-500 font-medium">
+          Loading agricultural marketplace catalog...
         </div>
       }
     >
@@ -39,13 +55,13 @@ export default function BuyerMarketplacePage() {
 }
 
 const BUYER_CLASSIFICATIONS = [
-  { id: "Food Processor", label: "Food Processor", icon: "🍱" },
-  { id: "Individual", label: "Individual", icon: "👤" },
-  { id: "Business", label: "Business", icon: "🏢" },
-  { id: "Manufacturer", label: "Manufacturer", icon: "🏭" },
-  { id: "Bakery or Food Business", label: "Bakery or Food Business", icon: "🥖" },
-  { id: "Reseller", label: "Reseller", icon: "🏪" },
-  { id: "Other", label: "Other", icon: "📦" },
+  { id: "Food Processor", label: "Food Processor", icon: BuildingIcon },
+  { id: "Individual", label: "Individual", icon: UserIcon },
+  { id: "Business", label: "Business", icon: BuildingIcon },
+  { id: "Manufacturer", label: "Manufacturer", icon: PackageIcon },
+  { id: "Bakery or Food Business", label: "Bakery or Food Business", icon: TagIcon },
+  { id: "Reseller", label: "Reseller", icon: GridIcon },
+  { id: "Other", label: "Other", icon: PackageIcon },
 ];
 
 function MarketplaceApp() {
@@ -58,9 +74,40 @@ function MarketplaceApp() {
   const paramCat = searchParams.get("category") || "";
   const paramSub = searchParams.get("sub") || searchParams.get("subcategory") || "";
 
-  // Products from catalog
-  const [allProducts, setAllProducts] = useState(B2B_CATALOG_PRODUCTS);
-  const [isLoading, setIsLoading] = useState(false);
+  // Products strictly fetched from backend API
+  const [allProducts, setAllProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [backendError, setBackendError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchBackendProducts() {
+      setIsLoading(true);
+      setBackendError("");
+      try {
+        const res = await getMarketplaceProducts();
+        if (isMounted) {
+          if (res.success && Array.isArray(res.data)) {
+            setAllProducts(res.data);
+          } else {
+            setAllProducts([]);
+            if (res.error) setBackendError(res.error);
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setAllProducts([]);
+          setBackendError(err.message || "Failed to load products from backend.");
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    fetchBackendProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState(paramSearch);
@@ -98,277 +145,156 @@ function MarketplaceApp() {
   // Seller access quota state
   const [quotaRemaining, setQuotaRemaining] = useState(7); // "7 of 10" in Screenshot 6
 
-  // User Saved & Wishlist state
-  const [savedIds, setSavedIds] = useState([]);
-
   // Modals state
+  const [selectedProductForEnquiry, setSelectedProductForEnquiry] = useState(null);
+  const [selectedSupplierForModal, setSelectedSupplierForModal] = useState(null);
   const [isSellerAccessOpen, setIsSellerAccessOpen] = useState(false);
   const [isPostRequirementOpen, setIsPostRequirementOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [selectedSupplierForModal, setSelectedSupplierForModal] = useState(null);
-  const [selectedProductForEnquiry, setSelectedProductForEnquiry] = useState(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // Guard: if registered user has not completed Buyer onboarding & payment, redirect to onboarding step 1
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // Saved / Wishlist items
+  const [savedProductIds, setSavedProductIds] = useState(() => {
+    if (typeof window === "undefined") return [];
     try {
-      const stored =
-        sessionStorage.getItem("ulavan_user") ||
-        sessionStorage.getItem("ulavan_registered_user") ||
-        localStorage.getItem("ulavan_registered_user");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.email || parsed.mobile || parsed.id) {
-          const buyerDone = Boolean(
-            parsed.buyerPaid ||
-            parsed.buyerOnboarded ||
-            (parsed.buyerData && parsed.isPaid && (parsed.role === "Buyer" || parsed.activeRole === "buyer"))
-          );
-          if (!buyerDone) {
-            router.replace("/onboarding?role=buyer&step=1");
-          }
-        }
-      }
-    } catch {}
-  }, [router]);
+      const stored = localStorage.getItem("ulavan_saved_products");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
 
-  // Load live catalog products on mount
+  // Sync quota from entitlement API
   useEffect(() => {
     let isMounted = true;
-    async function load() {
+    async function fetchQuota() {
       try {
-        const res = await getMarketplaceProducts();
-        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
-          // Merge custom created products with B2B_CATALOG_PRODUCTS
-          setAllProducts(res.data);
+        const buyerId = sessionUser?.id || sessionUser?.applicationId || "BUY_CURRENT_USER";
+        const ent = await getBuyerAccessEntitlement(buyerId);
+        if (isMounted && ent && typeof ent.viewsRemaining === "number") {
+          setQuotaRemaining(ent.viewsRemaining);
         }
-      } catch (err) {
-        console.error("Failed to load catalog products:", err);
-      }
+      } catch (e) {}
     }
-    load();
+    fetchQuota();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [sessionUser]);
 
-  // Sync quota from local entitlement state
-  useEffect(() => {
-    const updateQuota = () => {
-      const state = getLocalBuyerAccessState();
-      if (state && typeof state.quotaRemaining === "number") {
-        setQuotaRemaining(state.quotaRemaining);
-      }
-    };
-    updateQuota();
-    window.addEventListener("ulavan_access_changed", updateQuota);
-    return () => window.removeEventListener("ulavan_access_changed", updateQuota);
-  }, []);
-
-  // Sync state when URL params change
+  // Keep search params in sync
   useEffect(() => {
     if (paramSearch !== searchQuery) setSearchQuery(paramSearch);
     if (paramCat !== selectedCategory) setSelectedCategory(paramCat);
     if (paramSub !== selectedSubcategory) setSelectedSubcategory(paramSub);
   }, [paramSearch, paramCat, paramSub]);
 
-  // Load saved items from localStorage
-  const loadSavedData = () => {
-    try {
-      const rawSaved = localStorage.getItem("ulavan_saved_products");
-      if (rawSaved) {
-        const parsed = JSON.parse(rawSaved);
-        if (Array.isArray(parsed)) {
-          setSavedIds(parsed.map((p) => (typeof p === "string" ? p : p.id)));
-        }
-      }
-    } catch {}
-  };
-
-  useEffect(() => {
-    loadSavedData();
-    const handleSavedChanged = () => loadSavedData();
-    window.addEventListener("ulavan_saved_changed", handleSavedChanged);
-    return () => window.removeEventListener("ulavan_saved_changed", handleSavedChanged);
-  }, []);
-
-  // Toggle Save / Wishlist
-  const handleToggleSave = (prod) => {
-    try {
-      const rawSaved = localStorage.getItem("ulavan_saved_products");
-      let list = rawSaved ? JSON.parse(rawSaved) : [];
-      const prodId = prod.id;
-      const alreadySaved = list.some((item) => (typeof item === "string" ? item === prodId : item.id === prodId));
-
-      if (alreadySaved) {
-        list = list.filter((item) => (typeof item === "string" ? item !== prodId : item.id !== prodId));
+  // Wishlist Toggle
+  const handleToggleSave = (product) => {
+    setSavedProductIds((prev) => {
+      let next;
+      if (prev.includes(product.id)) {
+        next = prev.filter((id) => id !== product.id);
       } else {
-        list.push(prod);
+        next = [...prev, product.id];
       }
-
-      localStorage.setItem("ulavan_saved_products", JSON.stringify(list));
-      setSavedIds(list.map((p) => (typeof p === "string" ? p : p.id)));
-      window.dispatchEvent(new Event("ulavan_saved_changed"));
-    } catch {}
+      try {
+        localStorage.setItem("ulavan_saved_products", JSON.stringify(next));
+        window.dispatchEvent(new Event("ulavan_saved_changed"));
+      } catch (e) {}
+      return next;
+    });
   };
 
-  // Change Buyer Classification
-  const handleSelectClassification = (typeId) => {
-    setBuyerClassification(typeId);
+  // Change buyer classification
+  const handleSelectClassification = (clsId) => {
+    setBuyerClassification(clsId);
     setIsClassificationDropdownOpen(false);
-    try {
-      sessionStorage.setItem("ulavan_buyer_classification", typeId);
-      localStorage.setItem("ulavan_buyer_classification", typeId);
-      const userRaw = sessionStorage.getItem("ulavan_user");
-      if (userRaw) {
-        const u = JSON.parse(userRaw);
-        u.buyerType = typeId;
-        sessionStorage.setItem("ulavan_user", JSON.stringify(u));
-      }
-    } catch {}
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("ulavan_buyer_classification", clsId);
+        localStorage.setItem("ulavan_buyer_classification", clsId);
+      } catch (e) {}
+    }
   };
 
-  // Clear all filters
-  const handleClearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory("");
-    setSelectedSubcategory("");
-    setSelectedDistricts([]);
-    setSelectedGrades([]);
-    setSelectedAvailabilities([]);
-    setSelectedOrganic([]);
-    setSelectedMoq("all");
-    setVerifiedOnly(false);
-    router.replace("/marketplace");
-  };
-
-  // Filter & Personalisation Logic
+  // Filter & Personalisation Engine (Strict BRD Rule: single shared catalog re-ranked by buyer type)
   const filteredProducts = useMemo(() => {
-    let result = [...allProducts];
+    let list = [...allProducts];
 
-    // 1. Text Search
+    // 1. Text Search query
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter((p) => {
-        const titleMatch = (p.title || "").toLowerCase().includes(q);
-        const tamilMatch = (p.tamilTitle || "").includes(q);
-        const sellerMatch = (p.sellerName || "").toLowerCase().includes(q);
-        const districtMatch = (p.originDistrict || p.district || "").toLowerCase().includes(q);
-        const varietyMatch = (p.variety || "").toLowerCase().includes(q);
-        const catMatch = (p.category || "").toLowerCase().includes(q);
-        const subMatch = (p.subcategory || "").toLowerCase().includes(q);
-        return titleMatch || tamilMatch || sellerMatch || districtMatch || varietyMatch || catMatch || subMatch;
+      const q = searchQuery.toLowerCase();
+      list = list.filter((p) => {
+        return (
+          p.title?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q) ||
+          p.subcategory?.toLowerCase().includes(q) ||
+          p.commodity?.toLowerCase().includes(q) ||
+          p.originDistrict?.toLowerCase().includes(q) ||
+          p.originState?.toLowerCase().includes(q) ||
+          p.sellerName?.toLowerCase().includes(q) ||
+          p.variety?.toLowerCase().includes(q)
+        );
       });
     }
 
-    // 2. Category
+    // 2. Category Filter
     if (selectedCategory && selectedCategory !== "All Categories") {
-      result = result.filter(
-        (p) =>
-          p.category?.toLowerCase() === selectedCategory.toLowerCase() ||
-          p.categoryId === selectedCategory ||
-          p.displayCategory?.toLowerCase() === selectedCategory.toLowerCase()
-      );
+      list = list.filter((p) => {
+        const catName = p.category?.toLowerCase() || "";
+        const selName = selectedCategory.toLowerCase();
+        if (selName.includes("agricultural")) return catName.includes("agri") || catName.includes("products");
+        if (selName.includes("organic")) return catName.includes("organic") || p.organic === true;
+        if (selName.includes("raw")) return catName.includes("raw") || catName.includes("materials");
+        if (selName.includes("ingredient")) return catName.includes("ingredient") || catName.includes("additive");
+        if (selName.includes("value")) return catName.includes("value") || catName.includes("flour") || catName.includes("processed");
+        return catName === selName;
+      });
     }
 
-    // 3. Subcategory / Product Type
+    // 3. Subcategory Filter
     if (selectedSubcategory) {
-      result = result.filter(
-        (p) =>
+      list = list.filter((p) => {
+        return (
           p.subcategory?.toLowerCase() === selectedSubcategory.toLowerCase() ||
           p.displayCategory?.toLowerCase() === selectedSubcategory.toLowerCase()
-      );
+        );
+      });
     }
 
-    // 4. District / Origin
+    // 4. Origin Districts
     if (selectedDistricts.length > 0) {
-      result = result.filter((p) =>
-        selectedDistricts.some((d) => {
-          const origin = (p.originDistrict || p.originState || p.district || "").toLowerCase();
-          return origin.includes(d.toLowerCase());
-        })
-      );
+      list = list.filter((p) => {
+        const d = (p.originDistrict || p.originState || "").toLowerCase();
+        return selectedDistricts.some((sel) => d.includes(sel.toLowerCase()));
+      });
     }
 
-    // 5. Grade
+    // 5. Grades
     if (selectedGrades.length > 0) {
-      result = result.filter((p) =>
-        selectedGrades.some((g) => (p.grade || "").toLowerCase().includes(g.toLowerCase()))
-      );
+      list = list.filter((p) => {
+        const g = (p.grade || "").toLowerCase();
+        return selectedGrades.some((sel) => g.includes(sel.toLowerCase()));
+      });
     }
 
     // 6. Availability
     if (selectedAvailabilities.length > 0) {
-      result = result.filter((p) =>
-        selectedAvailabilities.some((a) => p.availabilityStatus === a)
-      );
-    }
-
-    // 7. Organic / Farming Type
-    if (selectedOrganic.length > 0) {
-      result = result.filter((p) =>
-        selectedOrganic.some((o) =>
-          (p.organicStatus || "").toLowerCase().includes(o.toLowerCase())
-        )
-      );
-    }
-
-    // 8. MOQ Range
-    if (selectedMoq && selectedMoq !== "all") {
-      result = result.filter((p) => {
-        const moq = Number(p.minOrderQuantity || p.moq) || 0;
-        if (selectedMoq === "< 100 kg") return moq < 100;
-        if (selectedMoq === "100 - 500 kg") return moq >= 100 && moq <= 500;
-        if (selectedMoq === "500 kg - 2 MT") return moq > 500 && moq <= 2000;
-        if (selectedMoq === "> 2 MT (Bulk lots)") return moq > 2000;
-        return true;
+      list = list.filter((p) => {
+        const a = (p.availability || "In Stock").toLowerCase();
+        return selectedAvailabilities.some((sel) => a.includes(sel.toLowerCase()));
       });
     }
 
-    // 9. Verified Only
+    // 7. Verified Only
     if (verifiedOnly) {
-      result = result.filter((p) => p.sellerVerified === true || p.verified === true);
+      list = list.filter((p) => p.verifiedSeller === true || p.verified === true);
     }
 
-    // 10. Personalisation based on Buyer Classification
-    if (buyerClassification === "Food Processor") {
-      // Prioritize fresh produce, pulses, spices, flours
-      result.sort((a, b) => {
-        const aBoost = ["Pulses", "Vegetables", "Spices", "Processed Foods"].includes(a.displayCategory || a.subcategory) ? -1 : 1;
-        const bBoost = ["Pulses", "Vegetables", "Spices", "Processed Foods"].includes(b.displayCategory || b.subcategory) ? -1 : 1;
-        return aBoost - bBoost;
-      });
-    } else if (buyerClassification === "Manufacturer") {
-      // Prioritize raw materials, bulk milling grains, copra
-      result.sort((a, b) => {
-        const aBoost = a.category === "Raw Materials" || a.subcategory?.includes("Paddy") ? -1 : 1;
-        const bBoost = b.category === "Raw Materials" || b.subcategory?.includes("Paddy") ? -1 : 1;
-        return aBoost - bBoost;
-      });
-    } else if (buyerClassification === "Bakery or Food Business") {
-      // Prioritize flours, starches, cold-pressed oils
-      result.sort((a, b) => {
-        const aBoost = a.title?.includes("Flour") || a.title?.includes("Oil") || a.title?.includes("Sago") ? -1 : 1;
-        const bBoost = b.title?.includes("Flour") || b.title?.includes("Oil") || b.title?.includes("Sago") ? -1 : 1;
-        return aBoost - bBoost;
-      });
-    } else if (buyerClassification === "Individual") {
-      // Prioritize lower MOQ items
-      result.sort((a, b) => (Number(a.minOrderQuantity) || 0) - (Number(b.minOrderQuantity) || 0));
-    }
-
-    // 11. Sorting
-    if (sortBy === "RECENT") {
-      result.sort((a, b) => new Date(b.harvestDate || b.lastUpdated || 0) - new Date(a.harvestDate || a.lastUpdated || 0));
-    } else if (sortBy === "PRICE_ASC") {
-      result.sort((a, b) => (Number(a.pricePerUnit || a.price) || 0) - (Number(b.pricePerUnit || b.price) || 0));
-    } else if (sortBy === "PRICE_DESC") {
-      result.sort((a, b) => (Number(b.pricePerUnit || b.price) || 0) - (Number(a.pricePerUnit || a.price) || 0));
-    }
-
-    return result;
+    // 8. Sorting & Personalization Re-ranking
+    return sortCatalogProducts(list, sortBy, buyerClassification);
   }, [
     allProducts,
     searchQuery,
@@ -377,25 +303,69 @@ function MarketplaceApp() {
     selectedDistricts,
     selectedGrades,
     selectedAvailabilities,
-    selectedOrganic,
-    selectedMoq,
     verifiedOnly,
-    buyerClassification,
     sortBy,
+    buyerClassification,
   ]);
+
+  // Handle Enquiry Trigger
+  const handleOpenEnquiry = async (product) => {
+    setSelectedProductForEnquiry(product);
+    // Deduct 1 unique seller access
+    try {
+      const buyerId = sessionUser?.id || sessionUser?.applicationId || "BUY_CURRENT_USER";
+      const sellerId = product.sellerId || product.supplierId || "SELLER_GENERAL";
+      const accessRes = await recordSellerAccess(buyerId, sellerId, {
+        productTitle: product.title,
+        sellerName: product.sellerName,
+      });
+      if (accessRes && typeof accessRes.viewsRemaining === "number") {
+        setQuotaRemaining(accessRes.viewsRemaining);
+      }
+    } catch (e) {}
+  };
+
+  // Handle Supplier Profile Trigger
+  const handleOpenSupplierProfile = (product) => {
+    const sup = SELLER_DIRECTORY.find((s) => s.id === product.sellerId || s.name === product.sellerName);
+    setSelectedSupplierForModal(
+      sup || {
+        id: product.sellerId || "SUP_VERIFIED",
+        name: product.sellerName || "Verified Agricultural Producer",
+        district: product.originDistrict || "Tamil Nadu",
+        sellerType: "Verified Agricultural Producer",
+        verified: true,
+      }
+    );
+  };
+
+  // Clear All Filters
+  const handleClearAllFilters = () => {
+    setSelectedCategory("");
+    setSelectedSubcategory("");
+    setSelectedDistricts([]);
+    setSelectedGrades([]);
+    setSelectedAvailabilities([]);
+    setSelectedOrganic([]);
+    setSelectedMoq("all");
+    setVerifiedOnly(false);
+    setSearchQuery("");
+  };
 
   const currentClassificationObj =
     BUYER_CLASSIFICATIONS.find((c) => c.id === buyerClassification) || BUYER_CLASSIFICATIONS[0];
+  const ClassificationIcon = currentClassificationObj.icon;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF7] flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
-      {/* 1. Top Navbar matching Screenshot 6 */}
+    <div className="min-h-screen bg-[#F5F5EB]/60 flex flex-col font-sans selection:bg-[#174B35] selection:text-white pb-20 md:pb-12">
+      {/* 1. Header (Sticky navigation matching Screenshot 6) */}
       <BuyerHeader
         initialSearch={searchQuery}
         initialCategory={selectedCategory || "All Categories"}
-        onSearch={(q) => {
+        onSearch={(q, cat) => {
           setSearchQuery(q);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (cat && cat !== "All Categories") setSelectedCategory(cat);
+          else setSelectedCategory("");
         }}
         onOpenPostRequirement={() => setIsPostRequirementOpen(true)}
         onOpenSellerAccess={() => setIsSellerAccessOpen(true)}
@@ -403,84 +373,79 @@ function MarketplaceApp() {
         onOpenHelp={() => setIsHelpOpen(true)}
       />
 
-      {/* 2. Hero Banner matching Screenshot 6 */}
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-4 pb-2">
-        <div className="relative rounded-2xl overflow-hidden shadow-sm h-36 sm:h-44 md:h-52 flex items-center px-6 sm:px-10 lg:px-12 text-white">
-          {/* Panoramic agricultural landscape background image */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: "url('/images/hero-aerial-fields.jpg')",
-            }}
+      {/* 2. Panoramic Hero Banner matching Screenshot 6 */}
+      <section className="relative w-full h-36 sm:h-44 md:h-52 bg-[#174B35] overflow-hidden flex items-center">
+        {/* Farm Background Image */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/images/hero-aerial-fields.jpg"
+            alt="Lush green panoramic agricultural fields and harvest farmland"
+            fill
+            priority
+            className="object-cover object-center brightness-75 contrast-110"
           />
-          {/* Subtle gradient overlay to enhance readability */}
-          <div className="absolute inset-0 bg-linear-to-r from-[#174B35]/85 via-[#174B35]/50 to-transparent" />
-
-          {/* Banner Text Content */}
-          <div className="relative z-10 max-w-xl space-y-1.5 sm:space-y-2">
-            <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight leading-tight drop-shadow-xs">
-              Source quality agricultural products
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-100 font-medium drop-shadow-xs">
-              Discover quality agricultural products &amp; raw materials direct from verified producers
-            </p>
-          </div>
+          <div className="absolute inset-0 bg-linear-to-r from-[#103A29]/80 via-[#174B35]/50 to-transparent" />
         </div>
-      </div>
 
-      {/* 3. Main 2-Column Section (Sidebar + Product Grid) matching Screenshot 6 */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Hero Title & Subtitle */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight drop-shadow-md">
+            Source quality agricultural products
+          </h1>
+          <p className="text-xs sm:text-sm text-emerald-100 font-medium mt-1 max-w-xl drop-shadow-xs">
+            Directly connect with verified farmers, FPOs, and certified agri-producers across Tamil Nadu.
+          </p>
+        </div>
+      </section>
+
+      {/* 3. Main Workspace: Dual-Card Left Sidebar + 4-Column Product Grid */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* ======================================================== */}
-          {/* LEFT COLUMN (3 Cols): Categories + Filters Sidebar       */}
+          {/* LEFT COLUMN: Categories & Filters (Screenshot 6 Layout)  */}
           {/* ======================================================== */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-4 sticky top-20">
+          <aside className="hidden lg:block lg:col-span-3 space-y-5">
             <FilterPanel
               filters={{
                 category: selectedCategory,
                 categories: selectedCategory ? [selectedCategory] : [],
                 subcategories: selectedSubcategory ? [selectedSubcategory] : [],
+                district: selectedDistricts[0] || "All Districts",
                 districts: selectedDistricts,
+                grade: selectedGrades[0] || "all",
                 grades: selectedGrades,
+                availability: selectedAvailabilities[0] || "all",
                 availabilities: selectedAvailabilities,
-                organicStatuses: selectedOrganic,
-                moqRange: selectedMoq,
+                organicStatus: selectedOrganic[0] || "all",
+                moq: selectedMoq,
+                verifiedOnly: verifiedOnly,
               }}
-              onFilterChange={(field, val) => {
-                if (field === "categories" || field === "category") {
-                  setSelectedCategory(Array.isArray(val) ? val[0] || "" : val);
-                  setSelectedSubcategory("");
-                } else if (field === "subcategories") {
-                  setSelectedSubcategory(val[0] || "");
-                } else if (field === "districts") {
-                  setSelectedDistricts(val);
-                } else if (field === "grades") {
-                  setSelectedGrades(val);
-                } else if (field === "availabilities") {
-                  setSelectedAvailabilities(val);
-                } else if (field === "organicStatuses") {
-                  setSelectedOrganic(val);
-                } else if (field === "moqRange") {
-                  setSelectedMoq(val);
-                }
+              onChange={(updated) => {
+                if (updated.categories) setSelectedCategory(updated.categories[0] || "");
+                if (updated.category !== undefined) setSelectedCategory(updated.category);
+                if (updated.subcategories) setSelectedSubcategory(updated.subcategories[0] || "");
+                if (updated.districts) setSelectedDistricts(updated.districts);
+                if (updated.grades) setSelectedGrades(updated.grades);
+                if (updated.availabilities) setSelectedAvailabilities(updated.availabilities);
+                if (updated.verifiedOnly !== undefined) setVerifiedOnly(updated.verifiedOnly);
               }}
-              onClearFilters={handleClearAllFilters}
+              onClearAll={handleClearAllFilters}
             />
           </aside>
 
           {/* ======================================================== */}
-          {/* RIGHT COLUMN (9 Cols): Top Bar + Product Grid + Notice   */}
+          {/* RIGHT COLUMN: Toolbar & 4-Column Product Card Grid       */}
           {/* ======================================================== */}
           <div className="lg:col-span-9 space-y-5">
-            {/* Top Toolbar matching Screenshot 6 */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-              {/* Left: Heading + Buyer Type Selector + Seller Access Pill */}
+            {/* Top Toolbar matching Screenshot 6: Marketplace | Dropdown | Quota Pill | Sort */}
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-4 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Left: Heading + Role Switcher + Quota Badge */}
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
                   Marketplace
                 </h2>
 
-                {/* Buyer Classification Dropdown Pill matching Screenshot 6 [🍱 Food Processor ▾] */}
+                {/* Buyer Classification Dropdown Pill */}
                 <div className="relative">
                   <button
                     type="button"
@@ -488,11 +453,9 @@ function MarketplaceApp() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-xs font-bold text-gray-800 shadow-2xs transition-colors cursor-pointer"
                     title="Change buyer procurement classification"
                   >
-                    <span>{currentClassificationObj.icon}</span>
+                    <ClassificationIcon className="w-3.5 h-3.5 text-[#174B35]" />
                     <span>{currentClassificationObj.label}</span>
-                    <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ChevronDownIcon className="w-3.5 h-3.5 text-gray-500" />
                   </button>
 
                   {/* Dropdown Menu for 7 Buyer Types */}
@@ -501,36 +464,40 @@ function MarketplaceApp() {
                       <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
                         Buyer Classification
                       </div>
-                      {BUYER_CLASSIFICATIONS.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => handleSelectClassification(c.id)}
-                          className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2 cursor-pointer transition-colors ${
-                            buyerClassification === c.id
-                              ? "bg-emerald-50 text-[#174B35] font-bold"
-                              : "text-gray-700 hover:bg-gray-50 font-medium"
-                          }`}
-                        >
-                          <span>{c.icon}</span>
-                          <span className="flex-1">{c.label}</span>
-                          {buyerClassification === c.id && <span className="text-[#174B35] font-bold">✓</span>}
-                        </button>
-                      ))}
+                      {BUYER_CLASSIFICATIONS.map((c) => {
+                        const Icon = c.icon;
+                        const isSelected = buyerClassification === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleSelectClassification(c.id)}
+                            className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2 cursor-pointer transition-colors ${
+                              isSelected
+                                ? "bg-emerald-50 text-[#174B35] font-bold"
+                                : "text-gray-700 hover:bg-gray-50 font-medium"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5 text-[#174B35]" />
+                            <span className="flex-1">{c.label}</span>
+                            {isSelected && <CheckIcon className="w-3.5 h-3.5 text-[#174B35]" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
-                {/* Seller Access Pill matching Screenshot 6: [✓ Seller enquiries remaining: 7 of 10 ℹ] */}
+                {/* Seller Access Pill */}
                 <button
                   type="button"
                   onClick={() => setIsSellerAccessOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-xs font-bold hover:bg-emerald-100/80 transition-colors cursor-pointer"
                   title="Click to view seller access rules & remaining quota"
                 >
-                  <span className="text-emerald-700">✓</span>
+                  <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-700" />
                   <span>Seller enquiries remaining: {quotaRemaining} of 10</span>
-                  <span className="text-emerald-600 text-[11px] font-bold ml-0.5">ℹ</span>
+                  <InfoIcon className="w-3.5 h-3.5 text-emerald-600 ml-0.5" />
                 </button>
               </div>
 
@@ -542,7 +509,8 @@ function MarketplaceApp() {
                   onClick={() => setIsMobileFilterOpen(true)}
                   className="lg:hidden px-3 py-1.5 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-700 flex items-center gap-1.5 shadow-2xs"
                 >
-                  <span>⚙️ Filters</span>
+                  <FilterIcon className="w-3.5 h-3.5" />
+                  <span>Filters</span>
                 </button>
 
                 <div className="flex items-center gap-1.5 text-xs">
@@ -561,93 +529,73 @@ function MarketplaceApp() {
               </div>
             </div>
 
-            {/* Active Filter Chips if any filter is active */}
-            {(selectedCategory || selectedSubcategory || selectedDistricts.length > 0 || selectedGrades.length > 0 || searchQuery) && (
-              <FilterChips
-                filters={{
-                  searchQuery,
-                  category: selectedCategory,
-                  subcategory: selectedSubcategory,
-                  districts: selectedDistricts,
-                  grades: selectedGrades,
-                  availabilities: selectedAvailabilities,
-                  organicStatuses: selectedOrganic,
-                  moqRange: selectedMoq,
-                  verifiedOnly,
-                }}
-                onRemoveFilter={(key, val) => {
-                  if (key === "searchQuery") setSearchQuery("");
-                  if (key === "category") setSelectedCategory("");
-                  if (key === "subcategory") setSelectedSubcategory("");
-                  if (key === "district") setSelectedDistricts((prev) => prev.filter((d) => d !== val));
-                  if (key === "grade") setSelectedGrades((prev) => prev.filter((g) => g !== val));
-                  if (key === "availability") setSelectedAvailabilities((prev) => prev.filter((a) => a !== val));
-                  if (key === "organic") setSelectedOrganic((prev) => prev.filter((o) => o !== val));
-                  if (key === "moqRange") setSelectedMoq("all");
-                  if (key === "verifiedOnly") setVerifiedOnly(false);
-                }}
-                onClearAll={handleClearAllFilters}
-              />
-            )}
-
-            {/* Product Card Grid (4 Columns matching Screenshot 6) */}
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((prod) => (
+            {/* 4-Column Product Grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <div
+                    key={n}
+                    className="bg-white rounded-2xl border border-gray-200 p-4 h-80 animate-pulse flex flex-col justify-between"
+                  >
+                    <div className="w-full h-40 bg-gray-200 rounded-xl" />
+                    <div className="space-y-2 mt-3">
+                      <div className="w-3/4 h-4 bg-gray-200 rounded" />
+                      <div className="w-1/2 h-3 bg-gray-200 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredProducts.map((product) => (
                   <ProductCard
-                    key={prod.id}
-                    product={prod}
-                    isSaved={savedIds.includes(prod.id)}
+                    key={product.id}
+                    product={product}
+                    isSaved={savedProductIds.includes(product.id)}
                     onToggleSave={handleToggleSave}
-                    onEnquire={(p) => setSelectedProductForEnquiry(p)}
-                    onViewSupplier={(p) => {
-                      const sup = SELLER_DIRECTORY.find((s) => s.id === p.sellerId || s.name === p.sellerName);
-                      setSelectedSupplierForModal(
-                        sup || {
-                          id: p.sellerId,
-                          name: p.sellerName,
-                          sellerType: p.sellerType || "Verified Producer",
-                          district: p.originDistrict || p.district,
-                          verified: true,
-                        }
-                      );
-                    }}
+                    onEnquire={handleOpenEnquiry}
+                    onViewSupplier={handleOpenSupplierProfile}
                   />
                 ))}
               </div>
             ) : (
               <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 text-3xl flex items-center justify-center mx-auto text-[#174B35]">
-                  🌾
+                <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-[#174B35]">
+                  <SproutIcon className="w-8 h-8 text-[#174B35]" />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">
-                  No agricultural products match your filter criteria
+                  {backendError ? "Backend Connection Notice" : "No agricultural products found"}
                 </h3>
                 <p className="text-xs text-gray-500 max-w-md mx-auto">
-                  Try clearing active filters or selecting another commodity category.
+                  {backendError ||
+                    (allProducts.length === 0
+                      ? "No active products returned from backend."
+                      : "Try clearing active filters or selecting another commodity category.")}
                 </p>
-                <button
-                  type="button"
-                  onClick={handleClearAllFilters}
-                  className="px-5 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold cursor-pointer"
-                >
-                  Clear All Filters
-                </button>
+                {allProducts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllFilters}
+                    className="px-5 py-2.5 rounded-xl bg-[#174B35] text-white text-xs font-bold cursor-pointer"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Bottom Notice Strip matching Screenshot 6 */}
+            {/* Bottom Notice Strip */}
             <div className="rounded-2xl bg-[#E8F0E3]/70 border border-[#174B35]/20 p-4 flex items-center justify-between gap-4 text-xs text-[#174B35] font-semibold">
               <div className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-[#174B35] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                  ℹ
+                <span className="w-5 h-5 rounded-full bg-[#174B35] text-white flex items-center justify-center shrink-0">
+                  <InfoIcon className="w-3.5 h-3.5 text-white" />
                 </span>
                 <span>
                   One enquiry to a new seller uses one seller access. Repeat enquiries to the same seller do not use another.
                 </span>
               </div>
-              <div className="hidden sm:block opacity-40 shrink-0 text-xl">
-                🍃
+              <div className="hidden sm:block opacity-40 shrink-0">
+                <LeafIcon className="w-5 h-5 text-[#174B35]" />
               </div>
             </div>
           </div>
@@ -663,37 +611,47 @@ function MarketplaceApp() {
           category: selectedCategory,
           categories: selectedCategory ? [selectedCategory] : [],
           subcategories: selectedSubcategory ? [selectedSubcategory] : [],
+          district: selectedDistricts[0] || "All Districts",
           districts: selectedDistricts,
+          grade: selectedGrades[0] || "all",
           grades: selectedGrades,
+          availability: selectedAvailabilities[0] || "all",
           availabilities: selectedAvailabilities,
-          organicStatuses: selectedOrganic,
-          moqRange: selectedMoq,
+          organicStatus: selectedOrganic[0] || "all",
+          moq: selectedMoq,
+          verifiedOnly: verifiedOnly,
         }}
-        onFilterChange={(field, val) => {
-          if (field === "categories" || field === "category") {
-            setSelectedCategory(Array.isArray(val) ? val[0] || "" : val);
-            setSelectedSubcategory("");
-          } else if (field === "subcategories") {
-            setSelectedSubcategory(val[0] || "");
-          } else if (field === "districts") {
-            setSelectedDistricts(val);
-          } else if (field === "grades") {
-            setSelectedGrades(val);
-          } else if (field === "availabilities") {
-            setSelectedAvailabilities(val);
-          } else if (field === "organicStatuses") {
-            setSelectedOrganic(val);
-          } else if (field === "moqRange") {
-            setSelectedMoq(val);
-          }
+        onChange={(updated) => {
+          if (updated.categories) setSelectedCategory(updated.categories[0] || "");
+          if (updated.category !== undefined) setSelectedCategory(updated.category);
+          if (updated.subcategories) setSelectedSubcategory(updated.subcategories[0] || "");
+          if (updated.districts) setSelectedDistricts(updated.districts);
+          if (updated.grades) setSelectedGrades(updated.grades);
+          if (updated.availabilities) setSelectedAvailabilities(updated.availabilities);
+          if (updated.verifiedOnly !== undefined) setVerifiedOnly(updated.verifiedOnly);
         }}
-        onClearFilters={handleClearAllFilters}
+        onClearAll={handleClearAllFilters}
       />
 
       {/* Mobile Bottom Tab Bar */}
       <BottomTabBar />
 
-      {/* Reusable Modals */}
+      {/* 4. Modals */}
+      <SendEnquiryModal
+        isOpen={!!selectedProductForEnquiry}
+        product={selectedProductForEnquiry}
+        onClose={() => setSelectedProductForEnquiry(null)}
+        onSuccess={() => {
+          setSelectedProductForEnquiry(null);
+        }}
+      />
+
+      <SupplierProfileModal
+        isOpen={!!selectedSupplierForModal}
+        supplier={selectedSupplierForModal}
+        onClose={() => setSelectedSupplierForModal(null)}
+      />
+
       <SellerAccessModal
         isOpen={isSellerAccessOpen}
         onClose={() => setIsSellerAccessOpen(false)}
@@ -702,19 +660,6 @@ function MarketplaceApp() {
       <PostRequirementModal
         isOpen={isPostRequirementOpen}
         onClose={() => setIsPostRequirementOpen(false)}
-      />
-
-      <SupplierProfileModal
-        isOpen={!!selectedSupplierForModal}
-        supplier={selectedSupplierForModal}
-        onClose={() => setSelectedSupplierForModal(null)}
-        onOpenSendEnquiry={(p) => setSelectedProductForEnquiry(p)}
-      />
-
-      <SendEnquiryModal
-        isOpen={!!selectedProductForEnquiry}
-        product={selectedProductForEnquiry}
-        onClose={() => setSelectedProductForEnquiry(null)}
       />
 
       <BuyerProfileModal

@@ -17,7 +17,6 @@ export default function SellerDashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMockActive, setIsMockActive] = useState(false);
 
   // Check if seller onboarding and membership payment has been completed
   useEffect(() => {
@@ -75,7 +74,6 @@ export default function SellerDashboardPage() {
         }
         if (isMounted && res.success && res.data) {
           setDashboardData(res.data);
-          setIsMockActive(Boolean(res.isMock));
         }
       } catch (err) {
         if (err?.status === 403 || err?.message?.includes("403")) {
@@ -163,21 +161,6 @@ export default function SellerDashboardPage() {
               >
                 Switch to Buyer View
               </Link>
-            </div>
-          )}
-
-          {/* Development Integration Status Notice */}
-          {isMockActive && (
-            <div className="px-3.5 py-2 rounded-xl bg-[#E8F0E3]/70 border border-[#729B59]/30 text-[#174B35] text-xs flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>
-                  <strong>Frontend Development Mode:</strong> Clean service layer active. Using verified mock data until backend seller endpoints are live.
-                </span>
-              </div>
-              <span className="hidden sm:inline font-mono text-[10px] bg-white/70 px-2 py-0.5 rounded border border-[#729B59]/20">
-                /api/v1/seller/dashboard
-              </span>
             </div>
           )}
 

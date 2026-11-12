@@ -18,7 +18,16 @@ import {
 } from "@/services/sellerAccessApi";
 import { createEnquiry, getBuyerEnquiries } from "@/services/enquiryApi";
 import { useSessionUser } from "@/services/sessionAuth";
-import { SELLER_DIRECTORY, B2B_CATALOG_PRODUCTS } from "@/data/marketplaceCatalog";
+import {
+  InfoIcon,
+  HomeIcon,
+  SproutIcon,
+  ShieldCheckIcon,
+  LocationIcon,
+  StarIcon,
+  PackageIcon,
+  CheckCircleIcon,
+} from "@/components/marketplace/Icons";
 
 export default function ProductDetailsClient({ productId }) {
   const router = useRouter();
@@ -76,10 +85,7 @@ export default function ProductDetailsClient({ productId }) {
 
         if (!isMounted) return;
 
-        let foundProd = prodRes?.success ? prodRes.data : null;
-        if (!foundProd) {
-          foundProd = B2B_CATALOG_PRODUCTS.find((p) => p.id === productId);
-        }
+        const foundProd = prodRes?.success ? prodRes.data : null;
 
         if (foundProd) {
           setProduct(foundProd);
@@ -226,8 +232,8 @@ export default function ProductDetailsClient({ productId }) {
       <div className="min-h-screen bg-[#F8FAF7] flex flex-col font-sans">
         <BuyerHeader />
         <div className="flex-1 max-w-xl mx-auto flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl mb-3">
-            ⚠️
+          <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-3">
+            <InfoIcon className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Listing Unavailable</h2>
           <p className="text-xs text-gray-600 mb-6">{loadError || "This agricultural produce lot is no longer listed."}</p>
@@ -271,10 +277,10 @@ export default function ProductDetailsClient({ productId }) {
       />
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 space-y-6">
-        {/* Breadcrumb Navigation matching Screenshot 5: 🏠 > Marketplace > Pulses > Green Moong Dal */}
+        {/* Breadcrumb Navigation matching Screenshot 5 */}
         <nav className="flex items-center gap-2 text-xs text-gray-500 overflow-x-auto whitespace-nowrap">
           <Link href="/marketplace" className="hover:text-[#174B35] text-gray-500 flex items-center gap-1">
-            <span>🏠</span>
+            <HomeIcon className="w-3.5 h-3.5 text-gray-500" />
           </Link>
           <span className="text-gray-400">&gt;</span>
           <Link href="/marketplace" className="hover:text-[#174B35] font-medium text-gray-600">
@@ -419,15 +425,18 @@ export default function ProductDetailsClient({ productId }) {
             <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-5 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#174B35] font-black flex items-center justify-center text-lg shrink-0">
-                    🌾
+                  <div className="w-11 h-11 rounded-xl bg-emerald-50 text-[#174B35] font-black flex items-center justify-center shrink-0">
+                    <SproutIcon className="w-6 h-6 text-[#174B35]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
                       <h4 className="text-sm font-extrabold text-gray-900">
                         {supplierProfile.name}
                       </h4>
-                      <span className="text-emerald-700 font-bold text-xs">✓ Verified Seller</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200/60">
+                        <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span>Verified Seller</span>
+                      </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {supplierProfile.location || `${supplierProfile.district}, Tamil Nadu`}
@@ -452,7 +461,7 @@ export default function ProductDetailsClient({ productId }) {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-4">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>📍</span>
+                  <LocationIcon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                   <span>Origin</span>
                 </div>
                 <strong className="text-xs sm:text-sm font-bold text-gray-900 mt-1 block">
@@ -462,7 +471,7 @@ export default function ProductDetailsClient({ productId }) {
 
               <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-4">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>★</span>
+                  <StarIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" filled={true} />
                   <span>Grade</span>
                 </div>
                 <strong className="text-xs sm:text-sm font-bold text-gray-900 mt-1 block">
@@ -472,7 +481,7 @@ export default function ProductDetailsClient({ productId }) {
 
               <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-4">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>🛒</span>
+                  <PackageIcon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                   <span>Min. Order</span>
                 </div>
                 <strong className="text-xs sm:text-sm font-bold text-gray-900 mt-1 block">
@@ -482,11 +491,10 @@ export default function ProductDetailsClient({ productId }) {
 
               <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-4">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>●</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
                   <span>Availability</span>
                 </div>
                 <strong className="text-xs sm:text-sm font-bold text-emerald-700 mt-1 block flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
                   <span>{product.availabilityStatus === "IN_STOCK" ? "In Stock" : product.availabilityStatus}</span>
                 </strong>
               </div>
@@ -573,8 +581,8 @@ export default function ProductDetailsClient({ productId }) {
               <div className="space-y-4 animate-in fade-in">
                 {/* Green Checkmark Confirmation Card */}
                 <div className="bg-white rounded-2xl border border-gray-200/90 shadow-md p-6 text-center space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center text-2xl mx-auto shadow-md">
-                    ✓
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
+                    <CheckCircleIcon className="w-8 h-8 text-white" />
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold text-gray-900">Enquiry Submitted!</h3>

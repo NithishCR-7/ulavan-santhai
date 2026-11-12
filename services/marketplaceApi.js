@@ -1,79 +1,138 @@
 /**
  * Ulavan Santhai - Buyer Marketplace API Service
- * Fetches published agricultural products from all verified sellers across Tamil Nadu.
- * Enforces strict visibility rules: ONLY approved & active products are displayed.
- * Masks restricted seller contact details according to marketplace access rules.
+ * Fetches published agricultural products strictly from the backend API.
+ * No mock data, no static catalog fallbacks.
  */
 
 import { apiFetch } from "./apiConfig";
-import { getLocalStoredProducts } from "./productApi";
-import { B2B_CATALOG_PRODUCTS } from "@/data/marketplaceCatalog";
 
 /**
- * Fetch all published products visible on the public/buyer marketplace
- * Rules:
- * 1. ONLY products with status 'ACTIVE' or 'PUBLISHED' are returned.
- * 2. Inactive, Pending Review, Draft, and Rejected products are strictly omitted.
- * 3. Restricted seller direct contacts (mobile, email) are omitted/masked.
+ * Fetch all published products visible on the public/buyer marketplace strictly from backend
  */
 export async function getMarketplaceProducts() {
-  // 1. Gather all products from local storage and seed published list
-  const locallyStored = getLocalStoredProducts();
+  const res = await apiFetch("/api/v1/marketplace/products", { method: "GET" });
 
-  // Combine local seller products with the multi-seller verified B2B catalog
-  const mergedMap = new Map();
-  B2B_CATALOG_PRODUCTS.forEach((p) => mergedMap.set(String(p.id), p));
-  locallyStored.forEach((p) => {
-    // If seller created local product, ensure it has images & status
-    mergedMap.set(String(p.id), {
-      ...p,
-      tamilTitle: p.tamilTitle || p.title,
-      isSoldOut: p.availabilityStatus === "SOLD_OUT" || Number(p.availableStock) <= 0,
-      images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [p.thumbnail || "/images/photographs/farmer-harvest.jpg"],
-    });
-  });
+  if (res.success && Array.isArray(res.data)) {
+    return {
+      success: true,
+      data: res.data,
+    };
+  }
 
-  const allProducts = Array.from(mergedMap.values());
+  // If backend returns data inside an object e.g. { products: [...] }
+  if (res.success && res.data?.products && Array.isArray(res.data.products)) {
+    return {
+      success: true,
+      data: res.data.products,
+    };
+  }
 
-  // 2. Strict Approval & Visibility Filter:
-  // ONLY products that are approved and published (ACTIVE / PUBLISHED)
-  const publishedProducts = allProducts.filter(
-    (p) => p.status === "ACTIVE" || p.status === "PUBLISHED"
-  );
-
-  // 3. Mask restricted direct contacts (unlocked only through sellerAccessApi)
-  const sanitizedProducts = publishedProducts.map((p) => ({
-    ...p,
-    sellerPhone: undefined,
-    sellerEmail: undefined,
-  }));
-
-  // 4. Dispatch to backend API with resilient fallback
-  const res = await apiFetch(
-    "/api/v1/marketplace/products",
-    { method: "GET" },
-    sanitizedProducts
-  );
+  // Fallback endpoint in case backend routes under /api/v1/products
+  if (!res.success && res.status === 404) {
+    const fallbackRes = await apiFetch("/api/v1/products", { method: "GET" });
+    if (fallbackRes.success) {
+      const list = Array.isArray(fallbackRes.data)
+        ? fallbackRes.data
+        : fallbackRes.data?.products || [];
+      return {
+        success: true,
+        data: list,
+      };
+    }
+  }
 
   return {
-    success: true,
-    data: res.isMock ? sanitizedProducts : res.data,
-    isMock: res.isMock,
-    source: res.source,
+    success: false,
+    data: [],
+    error: res.error || "Failed to fetch products from backend.",
   };
 }
 
 /**
- * Helper to get a single product by ID
+ * Helper to get a single product by ID strictly from backend
  */
 export async function getMarketplaceProductById(id) {
+  // Try direct product endpoint first
+  const res = await apiFetch(`/api/v1/marketplace/products/${encodeURIComponent(id)}`, {
+    method: "GET",
+  });
+
+  if (res.success && res.data) {
+    return {
+      success: true,
+      data: res.data,
+    };
+  }
+
+  if (res.status === 404) {
+    const directRes = await apiFetch(`/api/v1/products/${encodeURIComponent(id)}`, {
+      method: "GET",
+    });
+    if (directRes.success && directRes.data) {
+      return {
+        success: true,
+        data: directRes.data,
+      };
+    }
+  }
+
+  // If singular endpoint not mounted, find in marketplace list
   const allRes = await getMarketplaceProducts();
   if (allRes.success && Array.isArray(allRes.data)) {
     const product = allRes.data.find((p) => String(p.id) === String(id));
     return {
       success: !!product,
       data: product || null,
+      error: product ? null : "Product not found on backend.",
     };
   }
-  return { success: false, data: null };
+
+  return {
+    success: false,
+    data: null,
+    error: res.error || "Product not found on backend.",
+  };
+}
+
+/**
+ * Fetch marketplace sellers strictly from backend
+ */
+export async function getMarketplaceSellers() {
+  const res = await apiFetch("/api/v1/sellers", { method: "GET" });
+  if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+    return { success: true, data: res.data };
+  }
+
+  // Derive verified sellers from live backend products if /sellers is not a separate endpoint
+  const prodRes = await getMarketplaceProducts();
+  if (prodRes.success && Array.isArray(prodRes.data)) {
+    const sellerMap = new Map();
+    prodRes.data.forEach((p) => {
+      const id = p.sellerId || p.supplierId || `sel_${p.sellerName}`;
+      if (!sellerMap.has(id)) {
+        sellerMap.set(id, {
+          id,
+          name: p.sellerName || "Verified Producer",
+          district: p.originDistrict || "Tamil Nadu",
+          sellerType: p.sellerType || "Agricultural Producer",
+          rating: p.sellerRating || 4.7,
+          verified: true,
+          commodities: [p.title],
+          description: p.sellerDescription || p.description || "Direct agricultural producer verified on Ulavan Santhai.",
+        });
+      } else {
+        const existing = sellerMap.get(id);
+        if (p.title && !existing.commodities.includes(p.title)) {
+          existing.commodities.push(p.title);
+        }
+      }
+    });
+    return { success: true, data: Array.from(sellerMap.values()) };
+  }
+
+  return {
+    success: false,
+    data: [],
+    error: res.error || prodRes.error || "Failed to load sellers from backend.",
+  };
 }

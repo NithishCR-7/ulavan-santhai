@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSessionUser } from "@/services/sessionAuth";
 import { createEnquiry } from "@/services/enquiryApi";
 import { unlockSellerContact } from "@/services/sellerAccessApi";
+import { CloseIcon, CheckCircleIcon } from "./Icons";
 
 export default function SendEnquiryModal({ isOpen, onClose, product }) {
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function SendEnquiryModal({ isOpen, onClose, product }) {
             onClick={handleResetAndClose}
             className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center cursor-pointer transition-colors text-xs font-bold"
           >
-            ✕
+            <CloseIcon className="w-3.5 h-3.5" />
           </button>
         </div>
 
@@ -125,8 +126,8 @@ export default function SendEnquiryModal({ isOpen, onClose, product }) {
           {confirmation ? (
             /* Confirmation Screen */
             <div className="space-y-4 text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl mx-auto shadow-sm">
-                ✓
+              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-sm">
+                <CheckCircleIcon className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h4 className="text-base font-extrabold text-gray-900">

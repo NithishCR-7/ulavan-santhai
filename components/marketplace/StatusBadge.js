@@ -1,5 +1,7 @@
 "use client";
 
+import { LeafIcon } from "./Icons";
+
 export default function StatusBadge({ type, label, size = "sm" }) {
   const sizeClasses =
     size === "xs"
@@ -80,7 +82,7 @@ export default function StatusBadge({ type, label, size = "sm" }) {
         <span
           className={`inline-flex items-center gap-1 font-bold rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 ${sizeClasses}`}
         >
-          <span>🌱</span>
+          <LeafIcon className="w-3 h-3 text-emerald-800" />
           <span>{label || "Certified Organic"}</span>
         </span>
       );
@@ -95,4 +97,3 @@ export default function StatusBadge({ type, label, size = "sm" }) {
       );
   }
 }
-
