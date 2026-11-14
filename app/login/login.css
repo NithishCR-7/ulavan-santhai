@@ -10,7 +10,9 @@
 }
 
 .login-page:has(.register-form) {
-  background-image: url("/images/register-paddy-harvest.webp");
+  background-image:
+    linear-gradient(#101b2430, #101b2430),
+    url("/images/register-green-fields.webp");
 }
 
 .login-navigation {

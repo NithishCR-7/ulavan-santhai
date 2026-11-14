@@ -149,12 +149,6 @@ export default function AboutSection() {
                   priority
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
-                {/* Top Badge */}
-                   
-                
-                {/* Bottom Caption */}
-                
               </div>
 
               {/* Overlapping Secondary Image: Farmer Harvesting Fresh Produce */}
